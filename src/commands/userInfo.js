@@ -8,8 +8,9 @@ function toFullUserId(idOrLocalpart, serverName) {
 /**
  * Aggregiert Name, Berechtigungen, Raeume und Spaces eines Benutzers aus
  * mehreren Synapse-Admin-API-Aufrufen zu einer Uebersicht.
- * Raeume/Spaces werden als canonical_alias ausgegeben (Fallback: room_id,
- * falls kein canonical_alias gesetzt ist).
+ * Raeume/Spaces werden als { name, "power-level" }-Objekte ausgegeben: name
+ * ist der canonical_alias (Fallback: room_id), "power-level" der effektive
+ * Power-Level des Benutzers in diesem Raum (aus m.room.power_levels).
  *
  * @param {MatrixClient} client
  * @param {string} idOrLocalpart z.B. "womi0003" oder "@womi0003:matrix.h-ka.de"
@@ -25,13 +26,21 @@ export async function getUserOverview(client, idOrLocalpart, serverName) {
   ]);
 
   const roomsById = new Map(allRooms.map((room) => [room.room_id, room]));
+  const joinedRoomIds = joined.joined_rooms ?? [];
+
+  const entries = await Promise.all(
+    joinedRoomIds.map(async (roomId) => {
+      const info = roomsById.get(roomId);
+      const name = info?.canonical_alias ?? roomId;
+      const powerLevel = await client.getUserPowerLevel(roomId, userId);
+      return { name, powerLevel, isSpace: info?.room_type === 'm.space' };
+    })
+  );
+
   const rooms = [];
   const spaces = [];
-
-  for (const roomId of joined.joined_rooms ?? []) {
-    const info = roomsById.get(roomId);
-    const alias = info?.canonical_alias ?? roomId;
-    (info?.room_type === 'm.space' ? spaces : rooms).push(alias);
+  for (const entry of entries) {
+    (entry.isSpace ? spaces : rooms).push({ name: entry.name, 'power-level': entry.powerLevel });
   }
 
   return {
@@ -64,10 +73,14 @@ export async function userInfoCommand(idOrLocalpart, options) {
     console.log(`Gesperrt:     ${overview.locked ? 'ja' : 'nein'}`);
 
     console.log(`Raeume (${overview.rooms.length}):`);
-    for (const alias of overview.rooms) console.log(`  - ${alias}`);
+    for (const room of overview.rooms) {
+      console.log(`  - ${room.name} (Power-Level: ${room['power-level']})`);
+    }
 
     console.log(`Spaces (${overview.spaces.length}):`);
-    for (const alias of overview.spaces) console.log(`  - ${alias}`);
+    for (const space of overview.spaces) {
+      console.log(`  - ${space.name} (Power-Level: ${space['power-level']})`);
+    }
   } catch (err) {
     console.error(`Fehler beim Abrufen der Benutzer-Uebersicht: ${err.message}`);
     process.exitCode = 1;
