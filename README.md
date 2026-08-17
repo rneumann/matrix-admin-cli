@@ -33,8 +33,8 @@ node bin/matrix-admin.js user create testuser --password geheim123
 node bin/matrix-admin.js user list
 node bin/matrix-admin.js user deactivate @testuser:example.org
 
-node bin/matrix-admin.js user info womi0003
-node bin/matrix-admin.js user info womi0003 --json
+node bin/matrix-admin.js user info nera0001
+node bin/matrix-admin.js user info nera0001 --json
 
 node bin/matrix-admin.js room list
 node bin/matrix-admin.js space list
