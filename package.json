@@ -1,0 +1,20 @@
+{
+  "name": "matrix-admin-cli",
+  "version": "0.1.0",
+  "description": "CLI-Tools zum Testen des Benutzer-Provisionings auf einem Matrix-Server (Synapse Admin API)",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "matrix-admin": "./bin/matrix-admin.js"
+  },
+  "scripts": {
+    "start": "node bin/matrix-admin.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5"
+  }
+}
