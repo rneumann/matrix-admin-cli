@@ -3,11 +3,14 @@
 CLI-Tools zum Testen des Benutzer-Provisionings auf einem Matrix-Server (z.B. Synapse Admin API).
 
 CLI-Struktur, Konfiguration und Anbindung an die Matrix Client-Server API / Synapse Admin API
-(getestet gegen https://matrix.h-ka.de).
+(getestet gegen https://matrix.h-ka.de, laeuft dort auf Conduit/Conduwuit statt Synapse - die
+Synapse Admin API wird aber kompatibel angeboten).
 
-Der `MATRIX_ADMIN_TOKEN` muss ein Access-Token eines Accounts mit Server-Admin-Rechten sein
-(`admin: true` in der Synapse-Datenbank/Admin-API). Ohne Admin-Rechte schlagen `user create`,
-`user list` und `user deactivate` mit HTTP 403 fehl.
+`MATRIX_ADMIN_USER` / `MATRIX_ADMIN_PASSWORD` muessen die Zugangsdaten eines Accounts mit
+Server-Admin-Rechten sein (`admin: true` in der Synapse-Datenbank/Admin-API). Die CLI loggt sich
+damit beim ersten Request per `POST /_matrix/client/v3/login` ein und cached den erhaltenen
+Access-Token fuer die Dauer des Aufrufs. Ohne Admin-Rechte schlagen `user create`, `user list`
+und `user deactivate` mit HTTP 403 fehl.
 
 **Berechtigungen** gibt es auf zwei Ebenen: der globale Server-Admin-Flag (`user info` /
 `user create --admin`) und der raumspezifische Power-Level aus dem `m.room.power_levels`
@@ -22,7 +25,7 @@ die dabei erzeugte Session sofort wieder aus.
 ```bash
 npm install
 cp .env.example .env
-# .env mit Homeserver-URL, Admin-Token und Server-Name ausfuellen
+# .env mit Homeserver-URL, Admin-Zugangsdaten und Server-Name ausfuellen
 ```
 
 ## Nutzung
@@ -44,9 +47,28 @@ node bin/matrix-admin.js space is-member '!roomid:example.org' @testuser:example
 node bin/matrix-admin.js room power-levels '!roomid:example.org'
 node bin/matrix-admin.js room power-levels '!roomid:example.org' --user @testuser:example.org
 
+# Power-Level ueber den Server-Admin-Bot setzen ("!admin users force-promote").
+# Erfordert, dass der Zielbenutzer bereits Mitglied des Raums ist - bewirkt selbst KEINEN Join.
+node bin/matrix-admin.js room promote 'Allgemein'
+node bin/matrix-admin.js room promote 'Allgemein' --user @testuser:example.org
+
 # Passwort validieren (echter Login-Versuch, Session wird sofort ausgeloggt).
 # Ohne --password wird interaktiv (maskiert) danach gefragt.
 node bin/matrix-admin.js user check-password testuser
+
+# Aktuellen Admin-User (aus MATRIX_ADMIN_USER) einem einzelnen Raum/Space beitreten lassen.
+# roomId akzeptiert Room-ID (!...), Alias (#...) oder den logischen Namen aus "room list"/"space list".
+# Funktioniert nur fuer oeffentliche Raeume: der Admin-Join-Endpoint (und auch die
+# "!admin users force-join-room"/"force-promote"-Bot-Befehle) lehnen restricted und private
+# Raeume mit demselben Auth-Check ab wie ein regulaerer Join. Fuer solche Raeume hilft nur ein
+# regulaerer Invite durch ein bestehendes Mitglied.
+node bin/matrix-admin.js join '!roomid:example.org'
+node bin/matrix-admin.js join 'Allgemein'
+node bin/matrix-admin.js join 'Allgemein' --user @testuser:example.org
+
+# Aktuellen Admin-User (aus MATRIX_ADMIN_USER) allen Raeumen und Spaces beitreten lassen
+node bin/matrix-admin.js join-all --dry-run
+node bin/matrix-admin.js join-all
 ```
 
 Alternativ nach `npm link`:

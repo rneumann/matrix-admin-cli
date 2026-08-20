@@ -9,7 +9,12 @@ import { spaceListCommand } from './commands/spaceList.js';
 import { spaceMembersCommand } from './commands/spaceMembers.js';
 import { spaceIsMemberCommand } from './commands/spaceIsMember.js';
 import { roomPowerLevelsCommand } from './commands/roomPowerLevels.js';
+import { roomPromoteCommand } from './commands/roomPromote.js';
 import { userCheckPasswordCommand } from './commands/userCheckPassword.js';
+import { joinCommand } from './commands/join.js';
+import { joinAllCommand } from './commands/joinAll.js';
+import { grantAdminCommand } from './commands/grantAdmin.js';
+import { grantAdminAllCommand } from './commands/grantAdminAll.js';
 
 export function buildCli() {
   const program = new Command();
@@ -78,10 +83,20 @@ export function buildCli() {
   room
     .command('power-levels <roomId>')
     .description(
-      'm.room.power_levels Event eines Raums anzeigen. Mit --user den effektiven Level fuer einen Benutzer aufloesen.'
+      'm.room.power_levels Event eines Raums anzeigen (Room-ID, Alias oder Raumname). ' +
+        'Mit --user den effektiven Level fuer einen Benutzer aufloesen.'
     )
     .option('--user <userId>', 'Power-Level fuer diesen Benutzer aufloesen (explizit oder users_default)')
     .action(roomPowerLevelsCommand);
+
+  room
+    .command('promote <roomId>')
+    .description(
+      'Setzt den Power-Level eines (bereits im Raum befindlichen) Benutzers per ' +
+        '"!admin users force-promote" im Server-Admin-Room (MATRIX_ADMIN_ROOM_ID). Bewirkt keinen Join.'
+    )
+    .option('--user <userId>', 'Zielbenutzer statt des aktuellen Admin-Users (siehe whoami)')
+    .action(roomPromoteCommand);
 
   const space = program
     .command('space')
@@ -96,13 +111,48 @@ export function buildCli() {
 
   space
     .command('members <spaceId>')
-    .description('Mitglieder eines Space auflisten (vollstaendige Room-ID, z.B. !abc123:server_name)')
+    .description('Mitglieder eines Space auflisten (Room-ID, Alias oder Space-Name)')
     .action(spaceMembersCommand);
 
   space
     .command('is-member <spaceId> <userId>')
-    .description('Prueft, ob ein Benutzer Mitglied eines Space ist')
+    .description('Prueft, ob ein Benutzer Mitglied eines Space ist (Room-ID, Alias oder Space-Name)')
     .action(spaceIsMemberCommand);
+
+  program
+    .command('join <roomIdOrAlias>')
+    .description(
+      'Einzelnen Raum oder Space beitreten (Room-ID, Alias oder Raumname wie in "room list"/"space list" angezeigt)'
+    )
+    .option('--user <userId>', 'Anderen Benutzer beitreten lassen statt des aktuellen Admin-Users (siehe whoami)')
+    .action(joinCommand);
+
+  program
+    .command('join-all')
+    .description(
+      'Aktuellen Admin-User (siehe whoami) per Admin-API allen Raeumen und Spaces auf dem Server beitreten lassen'
+    )
+    .option('--dry-run', 'Nur anzeigen, welchen Raeumen beigetreten wuerde, ohne tatsaechlich beizutreten', false)
+    .action(joinAllCommand);
+
+  program
+    .command('grant-admin <roomIdOrAlias>')
+    .description(
+      'Macht MATRIX_TARGET_USER zum Admin (Power-Level) in einem Raum: der aktuelle Admin ' +
+        '(MATRIX_ADMIN_USER, muss bereits Mitglied sein) laedt ein, MATRIX_TARGET_USER nimmt selbst an, ' +
+        'Power-Level wird gesetzt. Erfordert MATRIX_TARGET_USER/MATRIX_TARGET_PASSWORD in der .env.'
+    )
+    .option('--level <n>', 'Ziel-Power-Level', '100')
+    .action(grantAdminCommand);
+
+  program
+    .command('grant-admin-all')
+    .description(
+      'Wie grant-admin, aber fuer alle Raeume/Spaces, in denen MATRIX_ADMIN_USER bereits ausreichend Power hat.'
+    )
+    .option('--level <n>', 'Ziel-Power-Level', '100')
+    .option('--dry-run', 'Nur anzeigen, fuer welche Raeume Admin-Rechte vergeben wuerden', false)
+    .action(grantAdminAllCommand);
 
   return program;
 }

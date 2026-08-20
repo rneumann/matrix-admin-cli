@@ -6,10 +6,14 @@ function stripTrailingSlash(url) {
 
 export function loadConfig() {
   const homeserverUrl = stripTrailingSlash(process.env.MATRIX_HOMESERVER_URL);
-  const adminToken = process.env.MATRIX_ADMIN_TOKEN;
+  const adminUser = process.env.MATRIX_ADMIN_USER;
+  const adminPassword = process.env.MATRIX_ADMIN_PASSWORD;
   const serverName = process.env.MATRIX_SERVER_NAME;
+  const adminRoomId = process.env.MATRIX_ADMIN_ROOM_ID;
+  const targetUser = process.env.MATRIX_TARGET_USER;
+  const targetPassword = process.env.MATRIX_TARGET_PASSWORD;
 
-  return { homeserverUrl, adminToken, serverName };
+  return { homeserverUrl, adminUser, adminPassword, serverName, adminRoomId, targetUser, targetPassword };
 }
 
 export function requireConfig() {
@@ -17,7 +21,8 @@ export function requireConfig() {
   const missing = [];
 
   if (!config.homeserverUrl) missing.push('MATRIX_HOMESERVER_URL');
-  if (!config.adminToken) missing.push('MATRIX_ADMIN_TOKEN');
+  if (!config.adminUser) missing.push('MATRIX_ADMIN_USER');
+  if (!config.adminPassword) missing.push('MATRIX_ADMIN_PASSWORD');
   if (!config.serverName) missing.push('MATRIX_SERVER_NAME');
 
   if (missing.length > 0) {

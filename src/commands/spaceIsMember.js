@@ -6,7 +6,8 @@ export async function spaceIsMemberCommand(spaceId, userId) {
   const client = new MatrixClient(config);
 
   try {
-    const isMember = await client.isRoomMember(spaceId, userId);
+    const roomId = await client.resolveRoomId(spaceId);
+    const isMember = await client.isRoomMember(roomId, userId);
     console.log(
       isMember
         ? `${userId} ist Mitglied von ${spaceId}`

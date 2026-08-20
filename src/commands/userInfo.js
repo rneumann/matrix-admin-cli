@@ -1,9 +1,6 @@
 import { requireConfig } from '../config.js';
 import { MatrixClient } from '../matrixClient.js';
-
-function toFullUserId(idOrLocalpart, serverName) {
-  return idOrLocalpart.startsWith('@') ? idOrLocalpart : `@${idOrLocalpart}:${serverName}`;
-}
+import { toFullUserId } from '../userId.js';
 
 /**
  * Aggregiert Name, Berechtigungen, Raeume und Spaces eines Benutzers aus

@@ -6,7 +6,8 @@ export async function spaceMembersCommand(spaceId) {
   const client = new MatrixClient(config);
 
   try {
-    const result = await client.getRoomMembers(spaceId);
+    const roomId = await client.resolveRoomId(spaceId);
+    const result = await client.getRoomMembers(roomId);
     console.log(`Mitglieder von ${spaceId} (${result.total ?? result.members?.length ?? 0}):`);
     console.log(result.members ?? result);
   } catch (err) {

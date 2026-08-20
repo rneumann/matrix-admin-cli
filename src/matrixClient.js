@@ -4,13 +4,45 @@
 //  - Synapse Admin API: https://element-hq.github.io/synapse/latest/usage/administration/admin_api/
 
 export class MatrixClient {
-  constructor({ homeserverUrl, adminToken, serverName }) {
+  constructor({ homeserverUrl, adminUser, adminPassword, serverName }) {
     this.homeserverUrl = homeserverUrl;
-    this.adminToken = adminToken;
+    this.adminUser = adminUser;
+    this.adminPassword = adminPassword;
     this.serverName = serverName;
+    this.accessToken = null;
   }
 
-  async request(method, path, { body, query, token } = {}) {
+  /**
+   * Loggt sich mit Benutzername/Passwort ein und cached den Access-Token
+   * fuer nachfolgende Requests dieser Client-Instanz.
+   * POST /_matrix/client/v3/login
+   */
+  async login() {
+    if (this.accessToken) return this.accessToken;
+
+    const localpart = this.adminUser.startsWith('@')
+      ? this.adminUser.slice(1).split(':')[0]
+      : this.adminUser;
+
+    const session = await this.request('POST', '/_matrix/client/v3/login', {
+      body: {
+        type: 'm.login.password',
+        identifier: { type: 'm.id.user', user: localpart },
+        password: this.adminPassword,
+        initial_device_display_name: 'matrix-admin-cli',
+      },
+      skipAuth: true,
+    });
+
+    this.accessToken = session.access_token;
+    return this.accessToken;
+  }
+
+  async request(method, path, { body, query, token, skipAuth = false } = {}) {
+    if (!skipAuth && !token) {
+      await this.login();
+    }
+
     const url = new URL(this.homeserverUrl + path);
 
     if (query) {
@@ -24,12 +56,13 @@ export class MatrixClient {
       }
     }
 
+    const headers = { 'Content-Type': 'application/json' };
+    const authToken = token ?? this.accessToken;
+    if (!skipAuth && authToken) headers.Authorization = `Bearer ${authToken}`;
+
     const res = await fetch(url, {
       method,
-      headers: {
-        Authorization: `Bearer ${token ?? this.adminToken}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
@@ -116,6 +149,125 @@ export class MatrixClient {
   async listRooms({ limit = 50, from, search_term, order_by, dir, room_types } = {}) {
     return this.request('GET', '/_synapse/admin/v1/rooms', {
       query: { limit, from, search_term, order_by, dir, room_types },
+    });
+  }
+
+  /**
+   * Wie listRooms(), blaettert aber ueber next_batch bis zum Ende durch und
+   * liefert alle Raeume (optional gefiltert ueber room_types) als flache Liste.
+   */
+  async listAllRooms({ search_term, order_by, dir, room_types } = {}) {
+    const rooms = [];
+    let from;
+
+    do {
+      const page = await this.listRooms({ limit: 100, from, search_term, order_by, dir, room_types });
+      rooms.push(...(page.rooms ?? []));
+      from = page.next_batch;
+    } while (from);
+
+    return rooms;
+  }
+
+  /**
+   * Sendet eine Textnachricht in einen Raum (regulaerer Client-Endpoint,
+   * kein Admin-API-Aufruf).
+   * PUT /_matrix/client/v3/rooms/<room_id>/send/m.room.message/<txnId>
+   */
+  async sendRoomMessage(roomId, body) {
+    const txnId = `m${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return this.request(
+      'PUT',
+      `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`,
+      { body: { msgtype: 'm.text', body } }
+    );
+  }
+
+  /**
+   * Setzt den Power-Level eines Benutzers in einem Raum ueber den
+   * "!admin users force-promote"-Befehl im Server-Admin-Room. Erfordert, dass
+   * der Benutzer bereits Mitglied des Raums ist und dort schon ein
+   * privilegierter (Ex-)Nutzer existiert, von dem delegiert werden kann -
+   * bewirkt selbst KEINEN Join, nur eine Power-Level-Aenderung.
+   */
+  async forcePromoteIntoRoom(userId, roomIdOrAlias, adminRoomId) {
+    await this.sendRoomMessage(adminRoomId, `!admin users force-promote ${userId} ${roomIdOrAlias}`);
+  }
+
+  /**
+   * Laedt einen Benutzer regulaer in einen Raum ein (Client-Server API,
+   * kein Admin-API-Aufruf). Erfordert, dass dieser Client bereits Mitglied
+   * mit ausreichend Power (invite-Schwelle) im Raum ist.
+   * POST /_matrix/client/v3/rooms/<room_id>/invite
+   */
+  async inviteToRoom(roomId, userId) {
+    return this.request('POST', `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/invite`, {
+      body: { user_id: userId },
+    });
+  }
+
+  /**
+   * Regulaerer (nicht-Admin-API) Join mit dem eigenen Access-Token dieses
+   * Clients. Funktioniert fuer einen eingeladenen Benutzer immer, auch bei
+   * restricted/privaten Raeumen (Invites umgehen die join_rules-Pruefung).
+   * POST /_matrix/client/v3/join/<room_id_or_alias>
+   */
+  async selfJoinRoom(roomIdOrAlias) {
+    return this.request('POST', `/_matrix/client/v3/join/${encodeURIComponent(roomIdOrAlias)}`, { body: {} });
+  }
+
+  /**
+   * Setzt den Power-Level eines Benutzers in einem Raum direkt ueber die
+   * Standard-Client-API. Kein Admin-Bot noetig, sofern dieser Client bereits
+   * ausreichend Power im Raum hat, um m.room.power_levels zu editieren.
+   */
+  async setUserPowerLevel(roomId, userId, level) {
+    const current = await this.request(
+      'GET',
+      `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/m.room.power_levels`
+    );
+    const updated = { ...current, users: { ...(current.users ?? {}), [userId]: level } };
+    return this.request('PUT', `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/m.room.power_levels`, {
+      body: updated,
+    });
+  }
+
+  /**
+   * Loest einen Raum-Identifier auf: Room-IDs (!...) und Aliase (#...) werden
+   * unveraendert durchgereicht, alles andere wird als Raumname interpretiert
+   * und gegen die Raumliste des Servers aufgeloest (exakte Treffer bevorzugt,
+   * sonst alle Substring-Treffer von search_term).
+   */
+  async resolveRoomId(identifier) {
+    if (identifier.startsWith('!') || identifier.startsWith('#')) {
+      return identifier;
+    }
+
+    const rooms = await this.listAllRooms({ search_term: identifier });
+    const exact = rooms.filter((r) => r.name?.toLowerCase() === identifier.toLowerCase());
+    const candidates = exact.length > 0 ? exact : rooms;
+
+    if (candidates.length === 0) {
+      throw new Error(`Kein Raum/Space mit Namen "${identifier}" gefunden.`);
+    }
+    if (candidates.length > 1) {
+      const names = candidates
+        .map((r) => `${r.name || r.canonical_alias || r.room_id} (${r.room_id})`)
+        .join(', ');
+      throw new Error(`Mehrdeutiger Raumname "${identifier}": ${names}`);
+    }
+
+    return candidates[0].room_id;
+  }
+
+  /**
+   * Laesst einen Benutzer per Admin-API einem Raum beitreten, ohne dass der
+   * Benutzer selbst aktiv werden muss (z.B. fuer Server-Admins ohne Einladung).
+   * POST /_synapse/admin/v1/join/<room_id_or_alias>
+   */
+  async joinRoom(roomIdOrAlias, userId) {
+    return this.request('POST', `/_synapse/admin/v1/join/${encodeURIComponent(roomIdOrAlias)}`, {
+      body: { user_id: userId },
     });
   }
 

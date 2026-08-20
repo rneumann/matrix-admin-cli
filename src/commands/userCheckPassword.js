@@ -1,10 +1,7 @@
 import { requireConfig } from '../config.js';
 import { MatrixClient } from '../matrixClient.js';
 import { promptHidden } from '../promptHidden.js';
-
-function toFullUserId(idOrLocalpart, serverName) {
-  return idOrLocalpart.startsWith('@') ? idOrLocalpart : `@${idOrLocalpart}:${serverName}`;
-}
+import { toFullUserId } from '../userId.js';
 
 export async function userCheckPasswordCommand(idOrLocalpart, options) {
   const config = requireConfig();
