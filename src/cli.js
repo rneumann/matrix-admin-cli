@@ -15,6 +15,8 @@ import { joinCommand } from './commands/join.js';
 import { joinAllCommand } from './commands/joinAll.js';
 import { grantAdminCommand } from './commands/grantAdmin.js';
 import { grantAdminAllCommand } from './commands/grantAdminAll.js';
+import { moveCommand } from './commands/move.js';
+import { spaceTreeCommand } from './commands/spaceTree.js';
 
 export function buildCli() {
   const program = new Command();
@@ -118,6 +120,28 @@ export function buildCli() {
     .command('is-member <spaceId> <userId>')
     .description('Prueft, ob ein Benutzer Mitglied eines Space ist (Room-ID, Alias oder Space-Name)')
     .action(spaceIsMemberCommand);
+
+  space
+    .command('tree')
+    .description(
+      'Hierarchische Ausgabe aller Spaces/Raeume auf dem Server (Verschachtelung ueber m.space.child)'
+    )
+    .option('--root <spaceIdOrAlias>', 'Nur den Teilbaum ab diesem Space anzeigen (statt aller Toplevel-Knoten)')
+    .action(spaceTreeCommand);
+
+  program
+    .command('move <roomIdOrAlias>')
+    .description(
+      'Verschiebt einen Raum oder Space in einen anderen Space, oder auf Toplevel-Ebene ' +
+        '(Root-ID, Alias oder Name; entfernt m.space.child im/aus dem/den Eltern-Space(s) und setzt es im Ziel-Space)'
+    )
+    .option('--to <spaceIdOrAlias>', 'Ziel-Space, in den verschoben werden soll')
+    .option('--top-level', 'Auf Toplevel-Ebene verschieben (aus allen Eltern-Spaces entfernen)', false)
+    .option(
+      '--from <spaceIdOrAlias>',
+      'Nur aus diesem einen Eltern-Space entfernen, statt aus allen aktuell gefundenen'
+    )
+    .action(moveCommand);
 
   program
     .command('join <roomIdOrAlias>')

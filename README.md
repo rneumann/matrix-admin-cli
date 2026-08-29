@@ -47,6 +47,18 @@ node bin/matrix-admin.js space is-member '!roomid:example.org' @testuser:example
 node bin/matrix-admin.js room power-levels '!roomid:example.org'
 node bin/matrix-admin.js room power-levels '!roomid:example.org' --user @testuser:example.org
 
+# Hierarchische Ausgabe aller Spaces/Raeume (Verschachtelung ueber m.space.child)
+node bin/matrix-admin.js space tree
+node bin/matrix-admin.js space tree --root 'Elternspace'
+
+# Raum/Space in einen anderen Space verschieben, bzw. auf Toplevel-Ebene setzen.
+# Ohne --from wird aus ALLEN aktuell gefundenen Eltern-Spaces entfernt; mit --from
+# nur aus dem angegebenen. Erfordert ausreichend Power (state_default) im/in den
+# betroffenen Space(s).
+node bin/matrix-admin.js move 'Unterraum' --to 'Zielspace'
+node bin/matrix-admin.js move 'Unterraum' --top-level
+node bin/matrix-admin.js move 'Unterraum' --from 'AlterSpace' --to 'Zielspace'
+
 # Power-Level ueber den Server-Admin-Bot setzen ("!admin users force-promote").
 # Erfordert, dass der Zielbenutzer bereits Mitglied des Raums ist - bewirkt selbst KEINEN Join.
 node bin/matrix-admin.js room promote 'Allgemein'

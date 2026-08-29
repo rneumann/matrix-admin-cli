@@ -280,6 +280,136 @@ export class MatrixClient {
   }
 
   /**
+   * Liest ein einzelnes State-Event (regulaere Client-Server API).
+   * GET /_matrix/client/v3/rooms/<room_id>/state/<eventType>/<stateKey>
+   */
+  async getStateEvent(roomId, eventType, stateKey = '') {
+    return this.request(
+      'GET',
+      `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/${eventType}/${encodeURIComponent(stateKey)}`
+    );
+  }
+
+  /**
+   * Setzt ein State-Event (regulaere Client-Server API). Erfordert, dass
+   * dieser Client bereits ausreichend Power (state_default) im Raum hat.
+   * PUT /_matrix/client/v3/rooms/<room_id>/state/<eventType>/<stateKey>
+   */
+  async setStateEvent(roomId, eventType, stateKey, content) {
+    return this.request(
+      'PUT',
+      `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/${eventType}/${encodeURIComponent(stateKey)}`,
+      { body: content }
+    );
+  }
+
+  /**
+   * Liest alle m.space.child-Events eines Space (die Kind-Raeume/-Spaces).
+   * Events mit leerem Content zaehlen laut Spec als entfernt und werden
+   * herausgefiltert.
+   */
+  async getSpaceChildren(spaceId) {
+    const { state = [] } = await this.getRoomState(spaceId);
+    return state
+      .filter((e) => e.type === 'm.space.child' && e.content && Object.keys(e.content).length > 0)
+      .map((e) => ({ roomId: e.state_key, ...e.content }));
+  }
+
+  /**
+   * Ordnet einen Raum/Space als Kind in einen Space ein, indem im Space ein
+   * m.space.child-Event gesetzt wird. Erfordert ausreichend Power im
+   * Ziel-Space.
+   */
+  async addSpaceChild(spaceId, childRoomId, { suggested = false, order } = {}) {
+    const content = { via: [this.serverName], suggested };
+    if (order) content.order = order;
+    return this.setStateEvent(spaceId, 'm.space.child', childRoomId, content);
+  }
+
+  /**
+   * Entfernt einen Raum/Space wieder aus einem Space (leerer Content beim
+   * m.space.child-Event). Erfordert ausreichend Power im Space.
+   */
+  async removeSpaceChild(spaceId, childRoomId) {
+    return this.setStateEvent(spaceId, 'm.space.child', childRoomId, {});
+  }
+
+  /**
+   * Setzt (optional) das reziproke m.space.parent-Event im Kind-Raum selbst.
+   * Rein informativ fuer Clients, nicht Voraussetzung fuer die Space-Struktur
+   * (die wird ausschliesslich ueber m.space.child im Space definiert).
+   */
+  async setSpaceParent(childRoomId, spaceId, { canonical = true } = {}) {
+    return this.setStateEvent(childRoomId, 'm.space.parent', spaceId, { via: [this.serverName], canonical });
+  }
+
+  /**
+   * Entfernt das reziproke m.space.parent-Event wieder aus dem Kind-Raum.
+   */
+  async removeSpaceParent(childRoomId, spaceId) {
+    return this.setStateEvent(childRoomId, 'm.space.parent', spaceId, {});
+  }
+
+  /**
+   * Sucht alle Spaces auf dem Server, die roomId aktuell als Kind fuehren
+   * (ueber m.space.child, nicht ueber das ggf. unzuverlaessige
+   * m.space.parent im Kind selbst).
+   */
+  async findParentSpaces(roomId) {
+    const spaces = await this.listAllRooms({ room_types: ['m.space'] });
+    const parents = [];
+
+    for (const space of spaces) {
+      const children = await this.getSpaceChildren(space.room_id);
+      if (children.some((c) => c.roomId === roomId)) {
+        parents.push(space);
+      }
+    }
+
+    return parents;
+  }
+
+  /**
+   * Prueft, ob targetId (direkt oder transitiv) ein Kind von roomId ist -
+   * um beim Verschieben Zyklen in der Space-Hierarchie zu verhindern.
+   */
+  async isDescendant(roomId, targetId, seen = new Set()) {
+    if (roomId === targetId) return true;
+    if (seen.has(roomId)) return false;
+    seen.add(roomId);
+
+    const children = await this.getSpaceChildren(roomId).catch(() => []);
+    for (const child of children) {
+      if (await this.isDescendant(child.roomId, targetId, seen)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Baut die vollstaendige Space-Hierarchie des Servers auf: alle
+   * Raeume/Spaces, sowie fuer jeden Space dessen Kinder (aus
+   * m.space.child). Grundlage fuer eine hierarchische Baum-Ausgabe.
+   */
+  async getSpaceHierarchy() {
+    const rooms = await this.listAllRooms({});
+    const byId = new Map(rooms.map((r) => [r.room_id, r]));
+    const spaces = rooms.filter((r) => r.room_type === 'm.space');
+
+    const childrenMap = new Map();
+    const parentIds = new Set();
+
+    for (const space of spaces) {
+      const children = await this.getSpaceChildren(space.room_id);
+      childrenMap.set(space.room_id, children);
+      for (const child of children) parentIds.add(child.roomId);
+    }
+
+    const topLevelIds = rooms.map((r) => r.room_id).filter((id) => !parentIds.has(id));
+
+    return { rooms, byId, childrenMap, topLevelIds };
+  }
+
+  /**
    * Mitglieder eines Raums bzw. Space.
    * GET /_synapse/admin/v1/rooms/<room_id>/members
    */
