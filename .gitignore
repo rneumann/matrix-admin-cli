@@ -5,3 +5,4 @@ node_modules/
 *.log
 hierarchies.txt
 README.md
+move.sh
