@@ -4,5 +4,4 @@ node_modules/
 !.env.example
 *.log
 hierarchies.txt
-README.md
 move.sh
