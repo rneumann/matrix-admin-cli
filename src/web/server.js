@@ -164,5 +164,14 @@ export function createServer(config) {
     }
   });
 
+  app.delete('/api/rooms/:roomId', auth(config), async (req, res) => {
+    try {
+      await req.matrixClient.deleteRoom(req.params.roomId);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: errorMessage(err) });
+    }
+  });
+
   return app;
 }

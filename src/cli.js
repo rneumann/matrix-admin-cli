@@ -18,6 +18,7 @@ import { grantAdminAllCommand } from './commands/grantAdminAll.js';
 import { moveCommand } from './commands/move.js';
 import { spaceTreeCommand } from './commands/spaceTree.js';
 import { serveCommand } from './commands/serve.js';
+import { deleteCommand } from './commands/delete.js';
 
 export function buildCli() {
   const program = new Command();
@@ -143,6 +144,15 @@ export function buildCli() {
       'Nur aus diesem einen Eltern-Space entfernen, statt aus allen aktuell gefundenen'
     )
     .action(moveCommand);
+
+  program
+    .command('delete <roomIdOrAlias>')
+    .description(
+      'Loescht einen Raum/Space unwiderruflich vom Server (Synapse Admin API, purge - inkl. aller Nachrichten). ' +
+        'Erfordert --yes zur Bestaetigung.'
+    )
+    .option('--yes', 'Bestaetigt das unwiderrufliche Loeschen', false)
+    .action(deleteCommand);
 
   program
     .command('join <roomIdOrAlias>')

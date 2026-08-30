@@ -59,6 +59,10 @@ node bin/matrix-admin.js move 'Unterraum' --to 'Zielspace'
 node bin/matrix-admin.js move 'Unterraum' --top-level
 node bin/matrix-admin.js move 'Unterraum' --from 'AlterSpace' --to 'Zielspace'
 
+# Raum/Space unwiderruflich vom Server loeschen (purge, inkl. aller Nachrichten).
+# Entfernt vorher best-effort die m.space.child-Verweise aus allen Eltern-Spaces.
+node bin/matrix-admin.js delete 'Unterraum' --yes
+
 # Power-Level ueber den Server-Admin-Bot setzen ("!admin users force-promote").
 # Erfordert, dass der Zielbenutzer bereits Mitglied des Raums ist - bewirkt selbst KEINEN Join.
 node bin/matrix-admin.js room promote 'Allgemein'
@@ -92,8 +96,8 @@ matrix-admin whoami
 ## Web-UI
 
 Leichtgewichtige interaktive Web-Oberflaeche (Express-Server + Vanilla-JS-Frontend ohne
-Build-Step/Framework) fuer Baumansicht, Mitglieder-Uebersicht sowie Erstellen/Verschieben von
-Raeumen und Spaces:
+Build-Step/Framework) fuer Baumansicht, Mitglieder-Uebersicht sowie Erstellen/Verschieben/Loeschen
+von Raeumen und Spaces (Loeschen erfordert eine Bestaetigung im Dialog, da es unwiderruflich ist):
 
 ```bash
 npm run web

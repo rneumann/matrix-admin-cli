@@ -41,7 +41,10 @@ function setButtonBusy(button, busy, busyText) {
     if (button.dataset.originalHtml === undefined) {
       button.dataset.originalHtml = button.innerHTML;
     }
-    const light = button.classList.contains('primary-btn') || button.closest('.login-form');
+    const light =
+      button.classList.contains('primary-btn') ||
+      button.classList.contains('danger-btn-solid') ||
+      button.closest('.login-form');
     const spinnerClass = light ? 'spinner spinner-inline-light' : 'spinner spinner-inline';
     button.innerHTML = `<span class="${spinnerClass}"></span>${busyText || 'Bitte warten…'}`;
     button.disabled = true;
@@ -264,6 +267,13 @@ async function loadDetail(nodeId) {
   moveBtn.textContent = 'Verschieben…';
   moveBtn.addEventListener('click', () => openMoveModal(nodeId));
   actions.appendChild(moveBtn);
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'danger-btn';
+  deleteBtn.textContent = 'Löschen…';
+  deleteBtn.addEventListener('click', () => openDeleteModal(nodeId));
+  actions.appendChild(deleteBtn);
+
   el.detailPanel.appendChild(actions);
 
   const membersSection = document.createElement('div');
@@ -422,6 +432,62 @@ function openMoveModal(nodeId) {
       setButtonBusy(submitBtn, false);
       cancelBtn.disabled = false;
       form.target.disabled = false;
+      modalBusy = false;
+    }
+  });
+
+  openModal(form);
+}
+
+function openDeleteModal(nodeId) {
+  const node = state.tree.nodes[nodeId];
+  const hasChildren = Boolean(node.children && node.children.length > 0);
+  const typeLabel = node.room_type === 'm.space' ? 'Space' : 'Raum';
+
+  const form = document.createElement('form');
+  form.innerHTML = `
+    <h2>${typeLabel} löschen</h2>
+    <p class="hint">${nodeLabel(node)}</p>
+    <p class="warning-text">
+      Löscht den ${typeLabel} unwiderruflich vom Server (inkl. aller Nachrichten). Diese Aktion kann
+      nicht rückgängig gemacht werden.${
+        hasChildren
+          ? ' Enthaltene Räume/Spaces werden dabei NICHT mitgelöscht, verlieren aber ihre Einordnung.'
+          : ''
+      }
+    </p>
+    <p class="error" data-error></p>
+    <div class="modal-actions">
+      <button type="button" data-cancel>Abbrechen</button>
+      <button type="submit" class="danger-btn-solid">Endgültig löschen</button>
+    </div>
+  `;
+
+  const cancelBtn = form.querySelector('[data-cancel]');
+  cancelBtn.addEventListener('click', () => {
+    if (!modalBusy) closeModal();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = form.querySelector('[data-error]');
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    modalBusy = true;
+    setButtonBusy(submitBtn, true, 'Lösche…');
+    cancelBtn.disabled = true;
+    try {
+      await api(`/api/rooms/${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
+      if (state.selectedId === nodeId) {
+        state.selectedId = null;
+        el.detailPanel.innerHTML = '<p class="hint">Waehle links einen Space oder Raum aus.</p>';
+      }
+      closeModal();
+      await loadTree();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      setButtonBusy(submitBtn, false);
+      cancelBtn.disabled = false;
       modalBusy = false;
     }
   });

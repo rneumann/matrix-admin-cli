@@ -534,6 +534,25 @@ export class MatrixClient {
   }
 
   /**
+   * Loescht einen Raum/Space unwiderruflich vom Server (Synapse Admin API,
+   * purge=true per Default). Entfernt vorher best-effort die
+   * m.space.child-Verweise aus allen aktuellen Eltern-Spaces, damit dort
+   * keine toten Referenzen zurueckbleiben - ein Fehlschlag dabei blockiert
+   * das eigentliche Loeschen nicht.
+   * DELETE /_synapse/admin/v1/rooms/<room_id>
+   */
+  async deleteRoom(roomId, { purge = true, block = false } = {}) {
+    const parents = await this.findParentSpaces(roomId).catch(() => []);
+    for (const parent of parents) {
+      await this.removeSpaceChild(parent.room_id, roomId).catch(() => {});
+    }
+
+    return this.request('DELETE', `/_synapse/admin/v1/rooms/${encodeURIComponent(roomId)}`, {
+      body: { purge, block },
+    });
+  }
+
+  /**
    * Mitglieder eines Raums bzw. Space.
    * GET /_synapse/admin/v1/rooms/<room_id>/members
    */

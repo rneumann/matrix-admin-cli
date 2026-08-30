@@ -230,6 +230,22 @@ button:hover {
   background: none;
 }
 
+.danger-btn-solid {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.danger-btn-solid:hover {
+  background: #a53125;
+  border-color: #a53125;
+}
+
+.warning-text {
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
 /* Tree */
 
 .tree ul {
