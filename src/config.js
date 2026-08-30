@@ -33,3 +33,25 @@ export function requireConfig() {
 
   return config;
 }
+
+/**
+ * Wie requireConfig(), aber ohne MATRIX_ADMIN_USER/PASSWORD - fuer die
+ * Web-UI, bei der sich Benutzer pro Session selbst per Login-Formular
+ * gegen den Homeserver authentifizieren statt einen fest konfigurierten
+ * Admin-Account zu nutzen.
+ */
+export function requireHomeserverConfig() {
+  const config = loadConfig();
+  const missing = [];
+
+  if (!config.homeserverUrl) missing.push('MATRIX_HOMESERVER_URL');
+  if (!config.serverName) missing.push('MATRIX_SERVER_NAME');
+
+  if (missing.length > 0) {
+    console.error(`Fehlende Konfiguration: ${missing.join(', ')}`);
+    console.error('Bitte .env anlegen (siehe .env.example).');
+    process.exit(1);
+  }
+
+  return config;
+}

@@ -8,13 +8,16 @@
     "matrix-admin": "./bin/matrix-admin.js"
   },
   "scripts": {
-    "start": "node bin/matrix-admin.js"
+    "start": "node bin/matrix-admin.js",
+    "web": "node bin/matrix-admin.js serve"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "commander": "^12.1.0",
-    "dotenv": "^16.4.5"
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
   }
 }

@@ -89,6 +89,29 @@ Alternativ nach `npm link`:
 matrix-admin whoami
 ```
 
+## Web-UI
+
+Leichtgewichtige interaktive Web-Oberflaeche (Express-Server + Vanilla-JS-Frontend ohne
+Build-Step/Framework) fuer Baumansicht, Mitglieder-Uebersicht sowie Erstellen/Verschieben von
+Raeumen und Spaces:
+
+```bash
+npm run web
+# oder: node bin/matrix-admin.js serve --port 3000
+```
+
+Danach `http://localhost:3000` oeffnen. Anders als die CLI-Befehle nutzt die Web-UI **keinen**
+fest konfigurierten Admin-Account aus der `.env` - jede Person meldet sich im Browser mit den
+eigenen Matrix-Zugangsdaten an (echter `POST /_matrix/client/v3/login`, Access-Token landet in
+einem httpOnly-Cookie, kein serverseitiger Session-Store). Fuer die Web-UI werden daher nur
+`MATRIX_HOMESERVER_URL` und `MATRIX_SERVER_NAME` in der `.env` benoetigt; die restlichen Funktionen
+(Baum lesen, Raeume/Spaces anlegen, verschieben) erfordern serverseitig ausreichend Rechte
+(Server-Admin fuer die Baumansicht via Synapse Admin API, `state_default`-Power im jeweiligen Space
+fuer Erstellen/Verschieben) des eingeloggten Accounts.
+
+Benutzerspezifische Funktionen (z.B. Provisioning einzelner Nutzer ueber die Web-UI) sind bewusst
+noch nicht enthalten und folgen in einem spaeteren Schritt.
+
 ## Struktur
 
 ```
@@ -97,4 +120,6 @@ src/cli.js               Command-Definitionen (commander)
 src/config.js             Laedt/validiert .env-Konfiguration
 src/matrixClient.js       Client-Stub fuer die Matrix Admin API
 src/commands/             Ein Modul pro Subcommand
+src/web/server.js         Express-Backend fuer die Web-UI (Login-Cookie, JSON-API)
+public/                   Statisches Web-UI-Frontend (HTML/CSS/Vanilla JS, kein Build-Step)
 ```

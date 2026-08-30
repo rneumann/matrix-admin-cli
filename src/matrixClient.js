@@ -3,13 +3,37 @@
 //  - Client-Server API: https://spec.matrix.org/latest/client-server-api/
 //  - Synapse Admin API: https://element-hq.github.io/synapse/latest/usage/administration/admin_api/
 
+/**
+ * Wendet fn auf jedes Element von items an, mit maximal `limit` gleichzeitig
+ * laufenden Aufrufen. Die Matrix-API bietet keinen Endpunkt, der z.B. "alle
+ * Top-Level-Spaces" in einem Request liefert - dafuer muss jeder Space
+ * einzeln auf seine Kind-Beziehungen geprueft werden. Ohne Parallelisierung
+ * summiert sich das bei vielen Spaces zu einer Latenz pro Space auf.
+ */
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const current = nextIndex++;
+      results[current] = await fn(items[current], current);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+const SPACE_SCAN_CONCURRENCY = 8;
+
 export class MatrixClient {
-  constructor({ homeserverUrl, adminUser, adminPassword, serverName }) {
+  constructor({ homeserverUrl, adminUser, adminPassword, serverName, accessToken }) {
     this.homeserverUrl = homeserverUrl;
     this.adminUser = adminUser;
     this.adminPassword = adminPassword;
     this.serverName = serverName;
-    this.accessToken = null;
+    this.accessToken = accessToken ?? null;
   }
 
   /**
@@ -357,16 +381,13 @@ export class MatrixClient {
    */
   async findParentSpaces(roomId) {
     const spaces = await this.listAllRooms({ room_types: ['m.space'] });
-    const parents = [];
 
-    for (const space of spaces) {
+    const hits = await mapWithConcurrency(spaces, SPACE_SCAN_CONCURRENCY, async (space) => {
       const children = await this.getSpaceChildren(space.room_id);
-      if (children.some((c) => c.roomId === roomId)) {
-        parents.push(space);
-      }
-    }
+      return children.some((c) => c.roomId === roomId) ? space : null;
+    });
 
-    return parents;
+    return hits.filter(Boolean);
   }
 
   /**
@@ -398,15 +419,118 @@ export class MatrixClient {
     const childrenMap = new Map();
     const parentIds = new Set();
 
-    for (const space of spaces) {
+    await mapWithConcurrency(spaces, SPACE_SCAN_CONCURRENCY, async (space) => {
       const children = await this.getSpaceChildren(space.room_id);
       childrenMap.set(space.room_id, children);
       for (const child of children) parentIds.add(child.roomId);
-    }
+    });
 
     const topLevelIds = rooms.map((r) => r.room_id).filter((id) => !parentIds.has(id));
 
     return { rooms, byId, childrenMap, topLevelIds };
+  }
+
+  /**
+   * Legt einen neuen Raum oder Space an (regulaere Client-Server API,
+   * dieser Client wird automatisch Mitglied). Ist parentId gesetzt, wird der
+   * neue Raum/Space anschliessend per addSpaceChild() in diesen Space
+   * eingeordnet (inkl. bestem-Versuch fuer das reziproke m.space.parent).
+   * POST /_matrix/client/v3/createRoom
+   */
+  async createRoom({ name, isSpace = false, topic, parentId, visibility = 'public' } = {}) {
+    const body = {
+      name,
+      visibility,
+      preset: visibility === 'public' ? 'public_chat' : 'private_chat',
+    };
+    if (topic) body.topic = topic;
+    if (isSpace) body.creation_content = { type: 'm.space' };
+
+    const { room_id: roomId } = await this.request('POST', '/_matrix/client/v3/createRoom', { body });
+
+    if (parentId) {
+      await this.addSpaceChild(parentId, roomId);
+      try {
+        await this.setSpaceParent(roomId, parentId);
+      } catch {
+        // m.space.parent im Kind ist nur informativ, Fehler hier sind unkritisch
+      }
+    }
+
+    return roomId;
+  }
+
+  /**
+   * Mitglieder eines Raums/Space, gruppiert nach effektivem Power-Level
+   * (expliziter Eintrag in m.room.power_levels.users, sonst users_default).
+   * Liefert eine nach Level absteigend sortierte Liste.
+   */
+  async getMembersByPowerLevel(roomId) {
+    const [{ members = [] }, levels] = await Promise.all([
+      this.getRoomMembers(roomId),
+      this.getRoomPowerLevels(roomId),
+    ]);
+
+    const usersDefault = levels.users_default ?? 0;
+    const explicit = levels.users ?? {};
+    const groups = new Map();
+
+    for (const userId of members) {
+      const level = explicit[userId] ?? usersDefault;
+      if (!groups.has(level)) groups.set(level, []);
+      groups.get(level).push(userId);
+    }
+
+    return [...groups.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([level, userIds]) => ({ level, userIds: userIds.sort() }));
+  }
+
+  /**
+   * Verschiebt einen Raum/Space in der Space-Hierarchie: entfernt ihn aus
+   * seinen aktuellen Eltern-Space(s) (oder nur aus fromSpaceId, falls
+   * angegeben) und ordnet ihn optional in toSpaceId ein. toSpaceId === null
+   * bedeutet Toplevel-Ebene (kein Eltern-Space mehr). roomId/toSpaceId/
+   * fromSpaceId muessen bereits aufgeloeste Room-IDs sein.
+   */
+  async moveNode(roomId, { toSpaceId = null, fromSpaceId = null } = {}) {
+    if (toSpaceId) {
+      if (toSpaceId === roomId) {
+        throw new Error('Ein Raum/Space kann nicht in sich selbst verschoben werden.');
+      }
+      if (await this.isDescendant(roomId, toSpaceId)) {
+        throw new Error(
+          `${toSpaceId} ist (direkt oder transitiv) bereits ein Kind von ${roomId} - das Verschieben ` +
+            'wuerde einen Zyklus in der Space-Hierarchie erzeugen.'
+        );
+      }
+    }
+
+    const parents = fromSpaceId ? [{ room_id: fromSpaceId }] : await this.findParentSpaces(roomId);
+    const removedFrom = [];
+
+    for (const parent of parents) {
+      if (toSpaceId && parent.room_id === toSpaceId) continue;
+
+      await this.removeSpaceChild(parent.room_id, roomId);
+      try {
+        await this.removeSpaceParent(roomId, parent.room_id);
+      } catch {
+        // m.space.parent im Kind ist nur informativ, Fehler hier sind unkritisch
+      }
+      removedFrom.push(parent.room_id);
+    }
+
+    if (toSpaceId) {
+      await this.addSpaceChild(toSpaceId, roomId);
+      try {
+        await this.setSpaceParent(roomId, toSpaceId);
+      } catch {
+        // m.space.parent im Kind ist nur informativ, Fehler hier sind unkritisch
+      }
+    }
+
+    return { removedFrom, addedTo: toSpaceId };
   }
 
   /**

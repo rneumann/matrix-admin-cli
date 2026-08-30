@@ -17,6 +17,7 @@ import { grantAdminCommand } from './commands/grantAdmin.js';
 import { grantAdminAllCommand } from './commands/grantAdminAll.js';
 import { moveCommand } from './commands/move.js';
 import { spaceTreeCommand } from './commands/spaceTree.js';
+import { serveCommand } from './commands/serve.js';
 
 export function buildCli() {
   const program = new Command();
@@ -168,6 +169,15 @@ export function buildCli() {
     )
     .option('--level <n>', 'Ziel-Power-Level', '100')
     .action(grantAdminCommand);
+
+  program
+    .command('serve')
+    .description(
+      'Startet die interaktive Web-UI (eigener Login pro Session, Baumansicht, Mitglieder nach Power-Level, ' +
+        'Spaces/Raeume erstellen und verschieben)'
+    )
+    .option('--port <n>', 'Port fuer den Web-Server', '3000')
+    .action(serveCommand);
 
   program
     .command('grant-admin-all')
