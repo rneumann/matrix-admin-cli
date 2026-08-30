@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe
+// SPDX-License-Identifier: MIT
+
 import readline from 'node:readline';
 
 // Fragt einen Wert interaktiv ab, ohne die Eingabe im Terminal anzuzeigen.

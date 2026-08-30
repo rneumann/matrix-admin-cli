@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe
+// SPDX-License-Identifier: MIT
+
 const state = {
   tree: { topLevelIds: [], nodes: {} },
   selectedId: null,

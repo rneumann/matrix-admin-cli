@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe
+// SPDX-License-Identifier: MIT
+
 // Client fuer die Matrix Client-Server API und die Synapse Admin API.
 // Referenzen:
 //  - Client-Server API: https://spec.matrix.org/latest/client-server-api/

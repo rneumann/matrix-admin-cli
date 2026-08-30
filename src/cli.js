@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe
+// SPDX-License-Identifier: MIT
+
 import { Command } from 'commander';
 import { whoamiCommand } from './commands/whoami.js';
 import { userCreateCommand } from './commands/userCreate.js';

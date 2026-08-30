@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe
+// SPDX-License-Identifier: MIT
+
 import { requireConfig } from '../config.js';
 import { MatrixClient } from '../matrixClient.js';
 import { buildTargetClient, grantAdminForRoom } from './grantAdmin.js';

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe
+// SPDX-License-Identifier: MIT
+
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';

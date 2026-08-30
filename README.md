@@ -127,3 +127,7 @@ src/commands/             Ein Modul pro Subcommand
 src/web/server.js         Express-Backend fuer die Web-UI (Login-Cookie, JSON-API)
 public/                   Statisches Web-UI-Frontend (HTML/CSS/Vanilla JS, kein Build-Step)
 ```
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE). Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe.

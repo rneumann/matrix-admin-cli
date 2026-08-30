@@ -4,6 +4,8 @@
   "description": "CLI-Tools zum Testen des Benutzer-Provisionings auf einem Matrix-Server (Synapse Admin API)",
   "type": "module",
   "private": true,
+  "license": "MIT",
+  "author": "Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe",
   "bin": {
     "matrix-admin": "./bin/matrix-admin.js"
   },
