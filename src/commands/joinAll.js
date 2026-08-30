@@ -12,8 +12,8 @@ export async function joinAllCommand(options) {
     const { user_id: userId } = await client.whoami();
     const rooms = await client.listAllRooms({});
 
-    console.log(`${rooms.length} Raeume/Spaces gefunden.`);
-    console.log(options.dryRun ? `[dry-run] wuerde ${userId} beitreten lassen:` : `Joine ${userId} bei...`);
+    console.log(`${rooms.length} rooms/spaces found.`);
+    console.log(options.dryRun ? `[dry-run] would join ${userId} to:` : `Joining ${userId} to...`);
 
     let joined = 0;
     let failed = 0;
@@ -37,11 +37,11 @@ export async function joinAllCommand(options) {
     }
 
     if (!options.dryRun) {
-      console.log(`Fertig: ${joined} beigetreten, ${failed} fehlgeschlagen.`);
+      console.log(`Done: ${joined} joined, ${failed} failed.`);
       if (failed > 0) process.exitCode = 1;
     }
   } catch (err) {
-    console.error(`Fehler beim Beitreten aller Raeume/Spaces: ${err.message}`);
+    console.error(`Failed to join all rooms/spaces: ${err.message}`);
     process.exitCode = 1;
   }
 }

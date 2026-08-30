@@ -7,8 +7,8 @@ import { MatrixClient } from '../matrixClient.js';
 export function buildTargetClient(config) {
   if (!config.targetUser || !config.targetPassword) {
     throw new Error(
-      'MATRIX_TARGET_USER und MATRIX_TARGET_PASSWORD muessen in der .env gesetzt sein ' +
-        '(Account, der Admin-Rechte in Raeumen erhalten soll).'
+      'MATRIX_TARGET_USER and MATRIX_TARGET_PASSWORD must be set in .env ' +
+        '(the account that should receive admin rights in rooms).'
     );
   }
   return new MatrixClient({
@@ -20,11 +20,11 @@ export function buildTargetClient(config) {
 }
 
 /**
- * Macht targetUserId zum Admin (Power-Level) in einem Raum:
- * 1. adminClient (bereits Mitglied mit ausreichend Power) laedt ein.
- * 2. targetClient (eigener Account) nimmt die Einladung an.
- * 3. adminClient setzt den Power-Level.
- * Schlaegt fehl, wenn adminClient selbst keinen Zugriff auf den Raum hat.
+ * Makes targetUserId an admin (power level) in a room:
+ * 1. adminClient (already a member with sufficient power) sends an invite.
+ * 2. targetClient (its own account) accepts the invite.
+ * 3. adminClient sets the power level.
+ * Fails if adminClient itself has no access to the room.
  */
 export async function grantAdminForRoom(adminClient, targetClient, roomId, targetUserId, level) {
   try {
@@ -49,9 +49,9 @@ export async function grantAdminCommand(roomIdOrAlias, options) {
     const level = options.level ? Number(options.level) : 100;
 
     await grantAdminForRoom(adminClient, targetClient, roomId, targetUserId, level);
-    console.log(`${targetUserId} ist jetzt Admin (Power-Level ${level}) in ${roomId}.`);
+    console.log(`${targetUserId} is now an admin (power level ${level}) in ${roomId}.`);
   } catch (err) {
-    console.error(`Fehler beim Admin-Grant fuer ${roomIdOrAlias}: ${err.message}`);
+    console.error(`Admin grant failed for ${roomIdOrAlias}: ${err.message}`);
     process.exitCode = 1;
   }
 }

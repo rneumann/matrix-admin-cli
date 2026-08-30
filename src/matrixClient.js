@@ -1,17 +1,17 @@
 // Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe
 // SPDX-License-Identifier: MIT
 
-// Client fuer die Matrix Client-Server API und die Synapse Admin API.
-// Referenzen:
+// Client for the Matrix Client-Server API and the Synapse Admin API.
+// References:
 //  - Client-Server API: https://spec.matrix.org/latest/client-server-api/
 //  - Synapse Admin API: https://element-hq.github.io/synapse/latest/usage/administration/admin_api/
 
 /**
- * Wendet fn auf jedes Element von items an, mit maximal `limit` gleichzeitig
- * laufenden Aufrufen. Die Matrix-API bietet keinen Endpunkt, der z.B. "alle
- * Top-Level-Spaces" in einem Request liefert - dafuer muss jeder Space
- * einzeln auf seine Kind-Beziehungen geprueft werden. Ohne Parallelisierung
- * summiert sich das bei vielen Spaces zu einer Latenz pro Space auf.
+ * Applies fn to every element of items, with at most `limit` calls running
+ * concurrently. The Matrix API has no endpoint that returns e.g. "all
+ * top-level spaces" in a single request - each space has to be checked
+ * individually for its child relationships. Without parallelization this
+ * adds up to one round trip of latency per space.
  */
 async function mapWithConcurrency(items, limit, fn) {
   const results = new Array(items.length);
@@ -40,8 +40,8 @@ export class MatrixClient {
   }
 
   /**
-   * Loggt sich mit Benutzername/Passwort ein und cached den Access-Token
-   * fuer nachfolgende Requests dieser Client-Instanz.
+   * Logs in with username/password and caches the access token for
+   * subsequent requests made by this client instance.
    * POST /_matrix/client/v3/login
    */
   async login() {
@@ -113,7 +113,7 @@ export class MatrixClient {
   }
 
   /**
-   * Prueft den Admin-Token und liefert die zugehoerige User-ID.
+   * Verifies the admin token and returns the associated user ID.
    * GET /_matrix/client/v3/account/whoami
    */
   async whoami() {
@@ -121,7 +121,7 @@ export class MatrixClient {
   }
 
   /**
-   * Liste der Benutzer auf dem Server.
+   * List of users on the server.
    * GET /_synapse/admin/v2/users
    */
   async listUsers({ limit = 50, from, name, guests, deactivated } = {}) {
@@ -131,7 +131,7 @@ export class MatrixClient {
   }
 
   /**
-   * Details zu einem einzelnen Benutzer.
+   * Details of a single user.
    * GET /_synapse/admin/v2/users/<user_id>
    */
   async getUser(userId) {
@@ -139,7 +139,7 @@ export class MatrixClient {
   }
 
   /**
-   * Raeume (inkl. Spaces), denen ein Benutzer beigetreten ist.
+   * Rooms (including spaces) a user has joined.
    * GET /_synapse/admin/v1/users/<user_id>/joined_rooms
    */
   async getJoinedRooms(userId) {
@@ -147,7 +147,7 @@ export class MatrixClient {
   }
 
   /**
-   * Legt einen neuen Benutzer an oder aktualisiert einen bestehenden.
+   * Creates a new user or updates an existing one.
    * PUT /_synapse/admin/v2/users/<user_id>
    */
   async createUser(userId, { password, admin = false, displayname } = {}) {
@@ -159,7 +159,7 @@ export class MatrixClient {
   }
 
   /**
-   * Deaktiviert einen Benutzer (Login/Sessions werden invalidiert).
+   * Deactivates a user (login/sessions get invalidated).
    * POST /_synapse/admin/v1/deactivate/<user_id>
    */
   async deactivateUser(userId, { erase = false } = {}) {
@@ -169,8 +169,8 @@ export class MatrixClient {
   }
 
   /**
-   * Liste der Raeume auf dem Server. Ueber room_types (z.B. "m.space")
-   * laesst sich auf Spaces filtern.
+   * List of rooms on the server. Can be filtered to spaces via room_types
+   * (e.g. "m.space").
    * GET /_synapse/admin/v1/rooms
    */
   async listRooms({ limit = 50, from, search_term, order_by, dir, room_types } = {}) {
@@ -180,8 +180,8 @@ export class MatrixClient {
   }
 
   /**
-   * Wie listRooms(), blaettert aber ueber next_batch bis zum Ende durch und
-   * liefert alle Raeume (optional gefiltert ueber room_types) als flache Liste.
+   * Like listRooms(), but pages through next_batch until the end and
+   * returns all rooms (optionally filtered via room_types) as a flat list.
    */
   async listAllRooms({ search_term, order_by, dir, room_types } = {}) {
     const rooms = [];
@@ -197,8 +197,8 @@ export class MatrixClient {
   }
 
   /**
-   * Sendet eine Textnachricht in einen Raum (regulaerer Client-Endpoint,
-   * kein Admin-API-Aufruf).
+   * Sends a text message into a room (regular client endpoint, not an
+   * admin API call).
    * PUT /_matrix/client/v3/rooms/<room_id>/send/m.room.message/<txnId>
    */
   async sendRoomMessage(roomId, body) {
@@ -211,20 +211,20 @@ export class MatrixClient {
   }
 
   /**
-   * Setzt den Power-Level eines Benutzers in einem Raum ueber den
-   * "!admin users force-promote"-Befehl im Server-Admin-Room. Erfordert, dass
-   * der Benutzer bereits Mitglied des Raums ist und dort schon ein
-   * privilegierter (Ex-)Nutzer existiert, von dem delegiert werden kann -
-   * bewirkt selbst KEINEN Join, nur eine Power-Level-Aenderung.
+   * Sets a user's power level in a room via the "!admin users
+   * force-promote" command in the server admin room. Requires that the
+   * user is already a member of the room and that a privileged (former)
+   * user already exists there to delegate from - does NOT cause a join
+   * itself, only a power level change.
    */
   async forcePromoteIntoRoom(userId, roomIdOrAlias, adminRoomId) {
     await this.sendRoomMessage(adminRoomId, `!admin users force-promote ${userId} ${roomIdOrAlias}`);
   }
 
   /**
-   * Laedt einen Benutzer regulaer in einen Raum ein (Client-Server API,
-   * kein Admin-API-Aufruf). Erfordert, dass dieser Client bereits Mitglied
-   * mit ausreichend Power (invite-Schwelle) im Raum ist.
+   * Regularly invites a user into a room (Client-Server API, not an admin
+   * API call). Requires that this client is already a member with
+   * sufficient power (invite threshold) in the room.
    * POST /_matrix/client/v3/rooms/<room_id>/invite
    */
   async inviteToRoom(roomId, userId) {
@@ -234,9 +234,9 @@ export class MatrixClient {
   }
 
   /**
-   * Regulaerer (nicht-Admin-API) Join mit dem eigenen Access-Token dieses
-   * Clients. Funktioniert fuer einen eingeladenen Benutzer immer, auch bei
-   * restricted/privaten Raeumen (Invites umgehen die join_rules-Pruefung).
+   * Regular (non-admin-API) join using this client's own access token.
+   * Always works for an invited user, even for restricted/private rooms
+   * (invites bypass the join_rules check).
    * POST /_matrix/client/v3/join/<room_id_or_alias>
    */
   async selfJoinRoom(roomIdOrAlias) {
@@ -244,9 +244,9 @@ export class MatrixClient {
   }
 
   /**
-   * Setzt den Power-Level eines Benutzers in einem Raum direkt ueber die
-   * Standard-Client-API. Kein Admin-Bot noetig, sofern dieser Client bereits
-   * ausreichend Power im Raum hat, um m.room.power_levels zu editieren.
+   * Sets a user's power level in a room directly via the standard client
+   * API. No admin bot needed, as long as this client already has
+   * sufficient power in the room to edit m.room.power_levels.
    */
   async setUserPowerLevel(roomId, userId, level) {
     const current = await this.request(
@@ -260,10 +260,10 @@ export class MatrixClient {
   }
 
   /**
-   * Loest einen Raum-Identifier auf: Room-IDs (!...) und Aliase (#...) werden
-   * unveraendert durchgereicht, alles andere wird als Raumname interpretiert
-   * und gegen die Raumliste des Servers aufgeloest (exakte Treffer bevorzugt,
-   * sonst alle Substring-Treffer von search_term).
+   * Resolves a room identifier: room IDs (!...) and aliases (#...) are
+   * passed through unchanged, anything else is treated as a room name and
+   * resolved against the server's room list (exact matches preferred,
+   * otherwise all substring matches of search_term).
    */
   async resolveRoomId(identifier) {
     if (identifier.startsWith('!') || identifier.startsWith('#')) {
@@ -275,21 +275,21 @@ export class MatrixClient {
     const candidates = exact.length > 0 ? exact : rooms;
 
     if (candidates.length === 0) {
-      throw new Error(`Kein Raum/Space mit Namen "${identifier}" gefunden.`);
+      throw new Error(`No room/space named "${identifier}" found.`);
     }
     if (candidates.length > 1) {
       const names = candidates
         .map((r) => `${r.name || r.canonical_alias || r.room_id} (${r.room_id})`)
         .join(', ');
-      throw new Error(`Mehrdeutiger Raumname "${identifier}": ${names}`);
+      throw new Error(`Ambiguous room name "${identifier}": ${names}`);
     }
 
     return candidates[0].room_id;
   }
 
   /**
-   * Laesst einen Benutzer per Admin-API einem Raum beitreten, ohne dass der
-   * Benutzer selbst aktiv werden muss (z.B. fuer Server-Admins ohne Einladung).
+   * Lets a user join a room via the admin API, without requiring the user
+   * to act themselves (e.g. for server admins without an invite).
    * POST /_synapse/admin/v1/join/<room_id_or_alias>
    */
   async joinRoom(roomIdOrAlias, userId) {
@@ -299,7 +299,7 @@ export class MatrixClient {
   }
 
   /**
-   * Liste der Spaces auf dem Server (Raeume mit room_type "m.space").
+   * List of spaces on the server (rooms with room_type "m.space").
    * GET /_synapse/admin/v1/rooms?room_types=m.space
    */
   async listSpaces({ limit = 50, from, search_term, order_by, dir } = {}) {
@@ -307,7 +307,7 @@ export class MatrixClient {
   }
 
   /**
-   * Liest ein einzelnes State-Event (regulaere Client-Server API).
+   * Reads a single state event (regular Client-Server API).
    * GET /_matrix/client/v3/rooms/<room_id>/state/<eventType>/<stateKey>
    */
   async getStateEvent(roomId, eventType, stateKey = '') {
@@ -318,8 +318,8 @@ export class MatrixClient {
   }
 
   /**
-   * Setzt ein State-Event (regulaere Client-Server API). Erfordert, dass
-   * dieser Client bereits ausreichend Power (state_default) im Raum hat.
+   * Sets a state event (regular Client-Server API). Requires that this
+   * client already has sufficient power (state_default) in the room.
    * PUT /_matrix/client/v3/rooms/<room_id>/state/<eventType>/<stateKey>
    */
   async setStateEvent(roomId, eventType, stateKey, content) {
@@ -331,9 +331,9 @@ export class MatrixClient {
   }
 
   /**
-   * Liest alle m.space.child-Events eines Space (die Kind-Raeume/-Spaces).
-   * Events mit leerem Content zaehlen laut Spec als entfernt und werden
-   * herausgefiltert.
+   * Reads all m.space.child events of a space (its child rooms/spaces).
+   * Events with empty content count as removed per spec and are filtered
+   * out.
    */
   async getSpaceChildren(spaceId) {
     const { state = [] } = await this.getRoomState(spaceId);
@@ -343,9 +343,9 @@ export class MatrixClient {
   }
 
   /**
-   * Ordnet einen Raum/Space als Kind in einen Space ein, indem im Space ein
-   * m.space.child-Event gesetzt wird. Erfordert ausreichend Power im
-   * Ziel-Space.
+   * Places a room/space as a child inside a space by setting an
+   * m.space.child event in the space. Requires sufficient power in the
+   * target space.
    */
   async addSpaceChild(spaceId, childRoomId, { suggested = false, order } = {}) {
     const content = { via: [this.serverName], suggested };
@@ -354,33 +354,34 @@ export class MatrixClient {
   }
 
   /**
-   * Entfernt einen Raum/Space wieder aus einem Space (leerer Content beim
-   * m.space.child-Event). Erfordert ausreichend Power im Space.
+   * Removes a room/space from a space again (empty content on the
+   * m.space.child event). Requires sufficient power in the space.
    */
   async removeSpaceChild(spaceId, childRoomId) {
     return this.setStateEvent(spaceId, 'm.space.child', childRoomId, {});
   }
 
   /**
-   * Setzt (optional) das reziproke m.space.parent-Event im Kind-Raum selbst.
-   * Rein informativ fuer Clients, nicht Voraussetzung fuer die Space-Struktur
-   * (die wird ausschliesslich ueber m.space.child im Space definiert).
+   * Optionally sets the reciprocal m.space.parent event on the child room
+   * itself. Purely informational for clients, not a prerequisite for the
+   * space structure (which is defined exclusively via m.space.child in
+   * the space).
    */
   async setSpaceParent(childRoomId, spaceId, { canonical = true } = {}) {
     return this.setStateEvent(childRoomId, 'm.space.parent', spaceId, { via: [this.serverName], canonical });
   }
 
   /**
-   * Entfernt das reziproke m.space.parent-Event wieder aus dem Kind-Raum.
+   * Removes the reciprocal m.space.parent event from the child room again.
    */
   async removeSpaceParent(childRoomId, spaceId) {
     return this.setStateEvent(childRoomId, 'm.space.parent', spaceId, {});
   }
 
   /**
-   * Sucht alle Spaces auf dem Server, die roomId aktuell als Kind fuehren
-   * (ueber m.space.child, nicht ueber das ggf. unzuverlaessige
-   * m.space.parent im Kind selbst).
+   * Finds all spaces on the server that currently list roomId as a child
+   * (via m.space.child, not via the potentially unreliable m.space.parent
+   * on the child itself).
    */
   async findParentSpaces(roomId) {
     const spaces = await this.listAllRooms({ room_types: ['m.space'] });
@@ -394,8 +395,8 @@ export class MatrixClient {
   }
 
   /**
-   * Prueft, ob targetId (direkt oder transitiv) ein Kind von roomId ist -
-   * um beim Verschieben Zyklen in der Space-Hierarchie zu verhindern.
+   * Checks whether targetId is (directly or transitively) a child of
+   * roomId - used to prevent cycles in the space hierarchy when moving.
    */
   async isDescendant(roomId, targetId, seen = new Set()) {
     if (roomId === targetId) return true;
@@ -410,9 +411,9 @@ export class MatrixClient {
   }
 
   /**
-   * Baut die vollstaendige Space-Hierarchie des Servers auf: alle
-   * Raeume/Spaces, sowie fuer jeden Space dessen Kinder (aus
-   * m.space.child). Grundlage fuer eine hierarchische Baum-Ausgabe.
+   * Builds the server's complete space hierarchy: all rooms/spaces, plus
+   * each space's children (from m.space.child). Basis for a hierarchical
+   * tree view.
    */
   async getSpaceHierarchy() {
     const rooms = await this.listAllRooms({});
@@ -434,10 +435,10 @@ export class MatrixClient {
   }
 
   /**
-   * Legt einen neuen Raum oder Space an (regulaere Client-Server API,
-   * dieser Client wird automatisch Mitglied). Ist parentId gesetzt, wird der
-   * neue Raum/Space anschliessend per addSpaceChild() in diesen Space
-   * eingeordnet (inkl. bestem-Versuch fuer das reziproke m.space.parent).
+   * Creates a new room or space (regular Client-Server API, this client
+   * automatically becomes a member). If parentId is set, the new
+   * room/space is then placed into that space via addSpaceChild() (incl.
+   * a best-effort attempt at the reciprocal m.space.parent).
    * POST /_matrix/client/v3/createRoom
    */
   async createRoom({ name, isSpace = false, topic, parentId, visibility = 'public' } = {}) {
@@ -456,7 +457,7 @@ export class MatrixClient {
       try {
         await this.setSpaceParent(roomId, parentId);
       } catch {
-        // m.space.parent im Kind ist nur informativ, Fehler hier sind unkritisch
+        // m.space.parent on the child is informational only, errors here are non-critical
       }
     }
 
@@ -464,9 +465,9 @@ export class MatrixClient {
   }
 
   /**
-   * Mitglieder eines Raums/Space, gruppiert nach effektivem Power-Level
-   * (expliziter Eintrag in m.room.power_levels.users, sonst users_default).
-   * Liefert eine nach Level absteigend sortierte Liste.
+   * Members of a room/space, grouped by effective power level (explicit
+   * entry in m.room.power_levels.users, otherwise users_default). Returns
+   * a list sorted by level, descending.
    */
   async getMembersByPowerLevel(roomId) {
     const [{ members = [] }, levels] = await Promise.all([
@@ -490,21 +491,21 @@ export class MatrixClient {
   }
 
   /**
-   * Verschiebt einen Raum/Space in der Space-Hierarchie: entfernt ihn aus
-   * seinen aktuellen Eltern-Space(s) (oder nur aus fromSpaceId, falls
-   * angegeben) und ordnet ihn optional in toSpaceId ein. toSpaceId === null
-   * bedeutet Toplevel-Ebene (kein Eltern-Space mehr). roomId/toSpaceId/
-   * fromSpaceId muessen bereits aufgeloeste Room-IDs sein.
+   * Moves a room/space within the space hierarchy: removes it from its
+   * current parent space(s) (or only from fromSpaceId, if given) and
+   * optionally places it into toSpaceId. toSpaceId === null means
+   * top-level (no parent space anymore). roomId/toSpaceId/fromSpaceId
+   * must already be resolved room IDs.
    */
   async moveNode(roomId, { toSpaceId = null, fromSpaceId = null } = {}) {
     if (toSpaceId) {
       if (toSpaceId === roomId) {
-        throw new Error('Ein Raum/Space kann nicht in sich selbst verschoben werden.');
+        throw new Error('A room/space cannot be moved into itself.');
       }
       if (await this.isDescendant(roomId, toSpaceId)) {
         throw new Error(
-          `${toSpaceId} ist (direkt oder transitiv) bereits ein Kind von ${roomId} - das Verschieben ` +
-            'wuerde einen Zyklus in der Space-Hierarchie erzeugen.'
+          `${toSpaceId} is (directly or transitively) already a child of ${roomId} - moving it ` +
+            'would create a cycle in the space hierarchy.'
         );
       }
     }
@@ -519,7 +520,7 @@ export class MatrixClient {
       try {
         await this.removeSpaceParent(roomId, parent.room_id);
       } catch {
-        // m.space.parent im Kind ist nur informativ, Fehler hier sind unkritisch
+        // m.space.parent on the child is informational only, errors here are non-critical
       }
       removedFrom.push(parent.room_id);
     }
@@ -529,7 +530,7 @@ export class MatrixClient {
       try {
         await this.setSpaceParent(roomId, toSpaceId);
       } catch {
-        // m.space.parent im Kind ist nur informativ, Fehler hier sind unkritisch
+        // m.space.parent on the child is informational only, errors here are non-critical
       }
     }
 
@@ -537,11 +538,11 @@ export class MatrixClient {
   }
 
   /**
-   * Loescht einen Raum/Space unwiderruflich vom Server (Synapse Admin API,
-   * purge=true per Default). Entfernt vorher best-effort die
-   * m.space.child-Verweise aus allen aktuellen Eltern-Spaces, damit dort
-   * keine toten Referenzen zurueckbleiben - ein Fehlschlag dabei blockiert
-   * das eigentliche Loeschen nicht.
+   * Permanently deletes a room/space from the server (Synapse Admin API,
+   * purge=true by default). First removes, best-effort, the
+   * m.space.child references from all current parent spaces so no dead
+   * references are left behind - a failure there does not block the
+   * actual deletion.
    * DELETE /_synapse/admin/v1/rooms/<room_id>
    */
   async deleteRoom(roomId, { purge = true, block = false } = {}) {
@@ -556,7 +557,7 @@ export class MatrixClient {
   }
 
   /**
-   * Mitglieder eines Raums bzw. Space.
+   * Members of a room or space.
    * GET /_synapse/admin/v1/rooms/<room_id>/members
    */
   async getRoomMembers(roomId) {
@@ -564,8 +565,8 @@ export class MatrixClient {
   }
 
   /**
-   * Prueft, ob ein Benutzer Mitglied eines Raums/Space ist.
-   * Basiert auf GET /_synapse/admin/v1/rooms/<room_id>/members
+   * Checks whether a user is a member of a room/space.
+   * Based on GET /_synapse/admin/v1/rooms/<room_id>/members
    */
   async isRoomMember(roomId, userId) {
     const { members = [] } = await this.getRoomMembers(roomId);
@@ -573,7 +574,7 @@ export class MatrixClient {
   }
 
   /**
-   * Vollstaendiger State eines Raums (u.a. das m.room.power_levels Event).
+   * Full state of a room (including the m.room.power_levels event).
    * GET /_synapse/admin/v1/rooms/<room_id>/state
    */
   async getRoomState(roomId) {
@@ -581,8 +582,8 @@ export class MatrixClient {
   }
 
   /**
-   * Content des m.room.power_levels State-Events eines Raums
-   * (users, users_default, kick/ban/invite/redact-Schwellwerte, ...).
+   * Content of a room's m.room.power_levels state event (users,
+   * users_default, kick/ban/invite/redact thresholds, ...).
    */
   async getRoomPowerLevels(roomId) {
     const { state = [] } = await this.getRoomState(roomId);
@@ -591,8 +592,8 @@ export class MatrixClient {
   }
 
   /**
-   * Effektiver Power-Level eines Users in einem Raum: expliziter Eintrag in
-   * "users", sonst der Raum-Default "users_default" (Standard 0).
+   * A user's effective power level in a room: explicit entry in "users",
+   * otherwise the room default "users_default" (default 0).
    */
   async getUserPowerLevel(roomId, userId) {
     const levels = await this.getRoomPowerLevels(roomId);
@@ -600,10 +601,10 @@ export class MatrixClient {
   }
 
   /**
-   * Prueft ein Passwort per echtem Login-Versuch ("bind"-Pattern) und loggt
-   * die dabei erzeugte Session sofort wieder aus. Der Server gibt Passwort-
-   * Hashes grundsaetzlich nicht ueber die API heraus - ein echter Login ist
-   * der einzige Weg, ein Passwort zu verifizieren.
+   * Verifies a password via a real login attempt ("bind" pattern) and
+   * immediately logs out the session created for it. The server never
+   * hands out password hashes via the API - a real login is the only way
+   * to verify a password.
    * POST /_matrix/client/v3/login + POST /_matrix/client/v3/logout
    */
   async checkPassword(userId, password) {

@@ -11,10 +11,10 @@ export async function spaceMembersCommand(spaceId) {
   try {
     const roomId = await client.resolveRoomId(spaceId);
     const result = await client.getRoomMembers(roomId);
-    console.log(`Mitglieder von ${spaceId} (${result.total ?? result.members?.length ?? 0}):`);
+    console.log(`Members of ${spaceId} (${result.total ?? result.members?.length ?? 0}):`);
     console.log(result.members ?? result);
   } catch (err) {
-    console.error(`Fehler beim Abrufen der Mitglieder von ${spaceId}: ${err.message}`);
+    console.error(`Failed to fetch members of ${spaceId}: ${err.message}`);
     process.exitCode = 1;
   }
 }

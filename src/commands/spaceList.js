@@ -16,7 +16,7 @@ export async function spaceListCommand(options) {
     console.log(`Spaces (${result.total ?? result.rooms?.length ?? 0}):`);
     console.log(result.rooms ?? result);
   } catch (err) {
-    console.error(`Fehler beim Abrufen der Space-Liste: ${err.message}`);
+    console.error(`Failed to fetch space list: ${err.message}`);
     process.exitCode = 1;
   }
 }

@@ -13,12 +13,12 @@ export async function spaceIsMemberCommand(spaceId, userId) {
     const isMember = await client.isRoomMember(roomId, userId);
     console.log(
       isMember
-        ? `${userId} ist Mitglied von ${spaceId}`
-        : `${userId} ist NICHT Mitglied von ${spaceId}`
+        ? `${userId} is a member of ${spaceId}`
+        : `${userId} is NOT a member of ${spaceId}`
     );
     process.exitCode = isMember ? 0 : 1;
   } catch (err) {
-    console.error(`Fehler bei der Mitgliedschaftspruefung: ${err.message}`);
+    console.error(`Membership check failed: ${err.message}`);
     process.exitCode = 2;
   }
 }

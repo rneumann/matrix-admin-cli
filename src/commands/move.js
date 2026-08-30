@@ -10,10 +10,10 @@ export async function moveCommand(roomIdOrAlias, options) {
 
   try {
     if (!options.to && !options.topLevel) {
-      throw new Error('Bitte --to <space> oder --top-level angeben.');
+      throw new Error('Please specify --to <space> or --top-level.');
     }
     if (options.to && options.topLevel) {
-      throw new Error('--to und --top-level koennen nicht gleichzeitig angegeben werden.');
+      throw new Error('--to and --top-level cannot be given at the same time.');
     }
 
     const roomId = await client.resolveRoomId(roomIdOrAlias);
@@ -23,16 +23,16 @@ export async function moveCommand(roomIdOrAlias, options) {
     const { removedFrom, addedTo } = await client.moveNode(roomId, { toSpaceId, fromSpaceId });
 
     for (const parentId of removedFrom) {
-      console.log(`Aus Space ${parentId} entfernt.`);
+      console.log(`Removed from space ${parentId}.`);
     }
 
     if (addedTo) {
-      console.log(`${roomIdOrAlias} in Space ${options.to} (${addedTo}) eingeordnet.`);
+      console.log(`${roomIdOrAlias} placed into space ${options.to} (${addedTo}).`);
     } else {
-      console.log(`${roomIdOrAlias} ist jetzt auf Toplevel-Ebene (kein Eltern-Space mehr).`);
+      console.log(`${roomIdOrAlias} is now at the top level (no parent space anymore).`);
     }
   } catch (err) {
-    console.error(`Fehler beim Verschieben von ${roomIdOrAlias}: ${err.message}`);
+    console.error(`Failed to move ${roomIdOrAlias}: ${err.message}`);
     process.exitCode = 1;
   }
 }

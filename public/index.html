@@ -4,7 +4,7 @@
 -->
 
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -16,14 +16,14 @@
     <form id="login-form" class="login-form">
       <h1>Matrix Admin</h1>
       <label>
-        Benutzer
-        <input id="login-username" type="text" autocomplete="username" placeholder="localpart oder @user:server" required />
+        Username
+        <input id="login-username" type="text" autocomplete="username" placeholder="localpart or @user:server" required />
       </label>
       <label>
-        Passwort
+        Password
         <input id="login-password" type="password" autocomplete="current-password" required />
       </label>
-      <button type="submit">Anmelden</button>
+      <button type="submit">Sign in</button>
       <p id="login-error" class="error"></p>
     </form>
   </div>
@@ -33,21 +33,21 @@
       <h1>Matrix Admin</h1>
       <div class="user-info">
         <span id="current-user"></span>
-        <button id="logout-btn" class="link-btn">Abmelden</button>
+        <button id="logout-btn" class="link-btn">Sign out</button>
       </div>
     </header>
     <main>
       <aside id="tree-panel">
         <div class="tree-toolbar">
-          <button id="new-space-btn" title="Neuen Space anlegen">+ Space</button>
-          <button id="new-room-btn" title="Neuen Raum anlegen">+ Raum</button>
-          <button id="refresh-btn" title="Baum neu laden">⟳</button>
+          <button id="new-space-btn" title="Create new space">+ Space</button>
+          <button id="new-room-btn" title="Create new room">+ Room</button>
+          <button id="refresh-btn" title="Reload tree">⟳</button>
         </div>
-        <p class="hint small">Kontext fuer "Neu": <span id="context-label">Wurzel</span></p>
+        <p class="hint small">Context for "New": <span id="context-label">Root</span></p>
         <div id="tree-root" class="tree"></div>
       </aside>
       <section id="detail-panel">
-        <p class="hint">Waehle links einen Space oder Raum aus.</p>
+        <p class="hint">Select a space or room on the left.</p>
       </section>
     </main>
   </div>

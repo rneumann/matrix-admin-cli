@@ -5,8 +5,8 @@ import { requireConfig } from '../config.js';
 import { MatrixClient } from '../matrixClient.js';
 
 function formatNode(room, roomId) {
-  if (!room) return `${roomId} (unbekannt / nicht auflösbar)`;
-  const type = room.room_type === 'm.space' ? '[Space]' : '[Raum]';
+  if (!room) return `${roomId} (unknown / not resolvable)`;
+  const type = room.room_type === 'm.space' ? '[Space]' : '[Room]';
   const name = room.name || room.canonical_alias || roomId;
   return `${type} ${name} (${roomId})`;
 }
@@ -17,7 +17,7 @@ function walk(roomId, prefix, isLast, ancestors, lines, hierarchy) {
   const connector = isLast ? '└── ' : '├── ';
   const cyclic = ancestors.has(roomId);
 
-  lines.push(prefix + connector + formatNode(room, roomId) + (cyclic ? '  [Zyklus - abgebrochen]' : ''));
+  lines.push(prefix + connector + formatNode(room, roomId) + (cyclic ? '  [cycle - stopped]' : ''));
   if (cyclic) return;
 
   const children = childrenMap.get(roomId) ?? [];
@@ -60,13 +60,13 @@ export async function spaceTreeCommand(options) {
     }
 
     if (lines.length === 0) {
-      console.log('Keine Raeume/Spaces gefunden.');
+      console.log('No rooms/spaces found.');
       return;
     }
 
     console.log(lines.join('\n'));
   } catch (err) {
-    console.error(`Fehler beim Erzeugen der Space-Hierarchie: ${err.message}`);
+    console.error(`Failed to build space hierarchy: ${err.message}`);
     process.exitCode = 1;
   }
 }

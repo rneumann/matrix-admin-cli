@@ -10,6 +10,6 @@ export async function serveCommand(options) {
 
   const app = createServer(config);
   app.listen(port, () => {
-    console.log(`Matrix-Admin Web-UI laeuft auf http://localhost:${port}`);
+    console.log(`Matrix Admin web UI running at http://localhost:${port}`);
   });
 }

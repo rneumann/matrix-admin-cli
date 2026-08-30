@@ -3,7 +3,7 @@
 
 import readline from 'node:readline';
 
-// Fragt einen Wert interaktiv ab, ohne die Eingabe im Terminal anzuzeigen.
+// Interactively prompts for a value without echoing the input to the terminal.
 export function promptHidden(question) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });

@@ -13,10 +13,10 @@ export async function roomListCommand(options) {
       limit: options.limit,
       search_term: options.search,
     });
-    console.log(`Raeume (${result.total ?? result.rooms?.length ?? 0}):`);
+    console.log(`Rooms (${result.total ?? result.rooms?.length ?? 0}):`);
     console.log(result.rooms ?? result);
   } catch (err) {
-    console.error(`Fehler beim Abrufen der Raumliste: ${err.message}`);
+    console.error(`Failed to fetch room list: ${err.message}`);
     process.exitCode = 1;
   }
 }

@@ -29,8 +29,8 @@ export function requireConfig() {
   if (!config.serverName) missing.push('MATRIX_SERVER_NAME');
 
   if (missing.length > 0) {
-    console.error(`Fehlende Konfiguration: ${missing.join(', ')}`);
-    console.error('Bitte .env anlegen (siehe .env.example).');
+    console.error(`Missing configuration: ${missing.join(', ')}`);
+    console.error('Please create a .env file (see .env.example).');
     process.exit(1);
   }
 
@@ -38,10 +38,9 @@ export function requireConfig() {
 }
 
 /**
- * Wie requireConfig(), aber ohne MATRIX_ADMIN_USER/PASSWORD - fuer die
- * Web-UI, bei der sich Benutzer pro Session selbst per Login-Formular
- * gegen den Homeserver authentifizieren statt einen fest konfigurierten
- * Admin-Account zu nutzen.
+ * Like requireConfig(), but without MATRIX_ADMIN_USER/PASSWORD - for the
+ * web UI, where users authenticate against the homeserver themselves per
+ * session via a login form instead of using a fixed admin account.
  */
 export function requireHomeserverConfig() {
   const config = loadConfig();
@@ -51,8 +50,8 @@ export function requireHomeserverConfig() {
   if (!config.serverName) missing.push('MATRIX_SERVER_NAME');
 
   if (missing.length > 0) {
-    console.error(`Fehlende Konfiguration: ${missing.join(', ')}`);
-    console.error('Bitte .env anlegen (siehe .env.example).');
+    console.error(`Missing configuration: ${missing.join(', ')}`);
+    console.error('Please create a .env file (see .env.example).');
     process.exit(1);
   }
 

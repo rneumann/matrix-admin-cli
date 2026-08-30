@@ -10,10 +10,10 @@ export async function userDeactivateCommand(userId, options) {
 
   try {
     const result = await client.deactivateUser(userId, { erase: options.erase });
-    console.log(`Benutzer deaktiviert: ${userId}`);
+    console.log(`User deactivated: ${userId}`);
     console.log(result);
   } catch (err) {
-    console.error(`Fehler beim Deaktivieren von ${userId}: ${err.message}`);
+    console.error(`Failed to deactivate ${userId}: ${err.message}`);
     process.exitCode = 1;
   }
 }

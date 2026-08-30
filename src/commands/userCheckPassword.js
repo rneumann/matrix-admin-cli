@@ -14,19 +14,19 @@ export async function userCheckPasswordCommand(idOrLocalpart, options) {
   const password =
     options.password ??
     process.env.MATRIX_CHECK_PASSWORD ??
-    (await promptHidden(`Passwort fuer ${userId}: `));
+    (await promptHidden(`Password for ${userId}: `));
 
   try {
     const result = await client.checkPassword(userId, password);
     if (result.valid) {
-      console.log(`Passwort fuer ${userId} ist GUELTIG.`);
+      console.log(`Password for ${userId} is VALID.`);
       process.exitCode = 0;
     } else {
-      console.log(`Passwort fuer ${userId} ist UNGUELTIG (${result.reason}).`);
+      console.log(`Password for ${userId} is INVALID (${result.reason}).`);
       process.exitCode = 1;
     }
   } catch (err) {
-    console.error(`Fehler bei der Passwortpruefung: ${err.message}`);
+    console.error(`Password check failed: ${err.message}`);
     process.exitCode = 2;
   }
 }

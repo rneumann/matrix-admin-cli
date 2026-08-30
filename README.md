@@ -1,43 +1,43 @@
 # matrix-admin-cli
 
-CLI-Tools zum Testen des Benutzer-Provisionings auf einem Matrix-Server (z.B. Synapse Admin API).
+CLI tools for testing user provisioning on a Matrix server (e.g. Synapse Admin API).
 
-CLI-Struktur, Konfiguration und Anbindung an die Matrix Client-Server API / Synapse Admin API
-(getestet gegen https://matrix.h-ka.de, laeuft dort auf Conduit/Conduwuit statt Synapse - die
-Synapse Admin API wird aber kompatibel angeboten).
+CLI structure, configuration, and integration with the Matrix Client-Server API / Synapse Admin
+API. Tested against Synapse-compatible homeservers - some homeservers (e.g. Conduit/Conduwuit)
+run something other than Synapse but still expose a compatible Synapse Admin API.
 
-`MATRIX_ADMIN_USER` / `MATRIX_ADMIN_PASSWORD` muessen die Zugangsdaten eines Accounts mit
-Server-Admin-Rechten sein (`admin: true` in der Synapse-Datenbank/Admin-API). Die CLI loggt sich
-damit beim ersten Request per `POST /_matrix/client/v3/login` ein und cached den erhaltenen
-Access-Token fuer die Dauer des Aufrufs. Ohne Admin-Rechte schlagen `user create`, `user list`
-und `user deactivate` mit HTTP 403 fehl.
+`MATRIX_ADMIN_USER` / `MATRIX_ADMIN_PASSWORD` must be the credentials of an account with server
+admin rights (`admin: true` in the Synapse database/Admin API). The CLI logs in with these on the
+first request via `POST /_matrix/client/v3/login` and caches the resulting access token for the
+duration of the call. Without admin rights, `user create`, `user list` and `user deactivate` fail
+with HTTP 403.
 
-**Berechtigungen** gibt es auf zwei Ebenen: der globale Server-Admin-Flag (`user info` /
-`user create --admin`) und der raumspezifische Power-Level aus dem `m.room.power_levels`
-State-Event (`room power-levels`). Letzterer ist aktuell nur lesbar, das Setzen folgt spaeter.
+**Permissions** exist on two levels: the global server admin flag (`user info` /
+`user create --admin`) and the room-specific power level from the `m.room.power_levels` state
+event (`room power-levels`). The latter is currently read-only; setting it is planned for later.
 
-**Passwoerter** koennen nicht als Hash abgefragt werden - Synapse gibt sie nie ueber die API
-heraus. `user check-password` prueft daher per echtem Login-Versuch ("bind"-Pattern) und loggt
-die dabei erzeugte Session sofort wieder aus.
+**Passwords** cannot be queried as a hash - Synapse never exposes them via the API.
+`user check-password` therefore verifies via a real login attempt ("bind" pattern) and immediately
+logs out the session created for it.
 
 ## Setup
 
 ```bash
 npm install
 cp .env.example .env
-# .env mit Homeserver-URL, Admin-Zugangsdaten und Server-Name ausfuellen
+# fill in .env with homeserver URL, admin credentials and server name
 ```
 
-## Nutzung
+## Usage
 
 ```bash
 node bin/matrix-admin.js whoami
-node bin/matrix-admin.js user create testuser --password geheim123
+node bin/matrix-admin.js user create testuser --password secret123
 node bin/matrix-admin.js user list
 node bin/matrix-admin.js user deactivate @testuser:example.org
 
-node bin/matrix-admin.js user info nera0001
-node bin/matrix-admin.js user info nera0001 --json
+node bin/matrix-admin.js user info testuser
+node bin/matrix-admin.js user info testuser --json
 
 node bin/matrix-admin.js room list
 node bin/matrix-admin.js space list
@@ -47,87 +47,88 @@ node bin/matrix-admin.js space is-member '!roomid:example.org' @testuser:example
 node bin/matrix-admin.js room power-levels '!roomid:example.org'
 node bin/matrix-admin.js room power-levels '!roomid:example.org' --user @testuser:example.org
 
-# Hierarchische Ausgabe aller Spaces/Raeume (Verschachtelung ueber m.space.child)
+# Hierarchical listing of all spaces/rooms (nesting via m.space.child)
 node bin/matrix-admin.js space tree
-node bin/matrix-admin.js space tree --root 'Elternspace'
+node bin/matrix-admin.js space tree --root 'ParentSpace'
 
-# Raum/Space in einen anderen Space verschieben, bzw. auf Toplevel-Ebene setzen.
-# Ohne --from wird aus ALLEN aktuell gefundenen Eltern-Spaces entfernt; mit --from
-# nur aus dem angegebenen. Erfordert ausreichend Power (state_default) im/in den
-# betroffenen Space(s).
-node bin/matrix-admin.js move 'Unterraum' --to 'Zielspace'
-node bin/matrix-admin.js move 'Unterraum' --top-level
-node bin/matrix-admin.js move 'Unterraum' --from 'AlterSpace' --to 'Zielspace'
+# Move a room/space into another space, or to the top level.
+# Without --from it is removed from ALL parent spaces currently found; with --from
+# only from the given one. Requires sufficient power (state_default) in the
+# affected space(s).
+node bin/matrix-admin.js move 'SubRoom' --to 'TargetSpace'
+node bin/matrix-admin.js move 'SubRoom' --top-level
+node bin/matrix-admin.js move 'SubRoom' --from 'OldSpace' --to 'TargetSpace'
 
-# Raum/Space unwiderruflich vom Server loeschen (purge, inkl. aller Nachrichten).
-# Entfernt vorher best-effort die m.space.child-Verweise aus allen Eltern-Spaces.
-node bin/matrix-admin.js delete 'Unterraum' --yes
+# Permanently delete a room/space from the server (purge, including all messages).
+# Best-effort removes the m.space.child references from all parent spaces first.
+node bin/matrix-admin.js delete 'SubRoom' --yes
 
-# Power-Level ueber den Server-Admin-Bot setzen ("!admin users force-promote").
-# Erfordert, dass der Zielbenutzer bereits Mitglied des Raums ist - bewirkt selbst KEINEN Join.
-node bin/matrix-admin.js room promote 'Allgemein'
-node bin/matrix-admin.js room promote 'Allgemein' --user @testuser:example.org
+# Set a power level via the server admin bot ("!admin users force-promote").
+# Requires the target user to already be a member of the room - does NOT cause a join itself.
+node bin/matrix-admin.js room promote 'General'
+node bin/matrix-admin.js room promote 'General' --user @testuser:example.org
 
-# Passwort validieren (echter Login-Versuch, Session wird sofort ausgeloggt).
-# Ohne --password wird interaktiv (maskiert) danach gefragt.
+# Validate a password (real login attempt, session is logged out immediately).
+# Without --password you are prompted interactively (masked input).
 node bin/matrix-admin.js user check-password testuser
 
-# Aktuellen Admin-User (aus MATRIX_ADMIN_USER) einem einzelnen Raum/Space beitreten lassen.
-# roomId akzeptiert Room-ID (!...), Alias (#...) oder den logischen Namen aus "room list"/"space list".
-# Funktioniert nur fuer oeffentliche Raeume: der Admin-Join-Endpoint (und auch die
-# "!admin users force-join-room"/"force-promote"-Bot-Befehle) lehnen restricted und private
-# Raeume mit demselben Auth-Check ab wie ein regulaerer Join. Fuer solche Raeume hilft nur ein
-# regulaerer Invite durch ein bestehendes Mitglied.
+# Have the current admin user (from MATRIX_ADMIN_USER) join a single room/space.
+# roomId accepts a room ID (!...), alias (#...), or the display name as shown by
+# "room list"/"space list".
+# Only works for public rooms: the admin join endpoint (and the
+# "!admin users force-join-room"/"force-promote" bot commands) reject restricted and private
+# rooms with the same auth check as a regular join. For such rooms only a regular invite from
+# an existing member helps.
 node bin/matrix-admin.js join '!roomid:example.org'
-node bin/matrix-admin.js join 'Allgemein'
-node bin/matrix-admin.js join 'Allgemein' --user @testuser:example.org
+node bin/matrix-admin.js join 'General'
+node bin/matrix-admin.js join 'General' --user @testuser:example.org
 
-# Aktuellen Admin-User (aus MATRIX_ADMIN_USER) allen Raeumen und Spaces beitreten lassen
+# Have the current admin user (from MATRIX_ADMIN_USER) join all rooms and spaces
 node bin/matrix-admin.js join-all --dry-run
 node bin/matrix-admin.js join-all
 ```
 
-Alternativ nach `npm link`:
+Alternatively, after `npm link`:
 
 ```bash
 matrix-admin whoami
 ```
 
-## Web-UI
+## Web UI
 
-Leichtgewichtige interaktive Web-Oberflaeche (Express-Server + Vanilla-JS-Frontend ohne
-Build-Step/Framework) fuer Baumansicht, Mitglieder-Uebersicht sowie Erstellen/Verschieben/Loeschen
-von Raeumen und Spaces (Loeschen erfordert eine Bestaetigung im Dialog, da es unwiderruflich ist):
+Lightweight interactive web UI (Express server + vanilla-JS frontend, no build step/framework)
+for the tree view, member overview, and creating/moving/deleting rooms and spaces (deleting
+requires confirmation in a dialog, since it is irreversible):
 
 ```bash
 npm run web
-# oder: node bin/matrix-admin.js serve --port 3000
+# or: node bin/matrix-admin.js serve --port 3000
 ```
 
-Danach `http://localhost:3000` oeffnen. Anders als die CLI-Befehle nutzt die Web-UI **keinen**
-fest konfigurierten Admin-Account aus der `.env` - jede Person meldet sich im Browser mit den
-eigenen Matrix-Zugangsdaten an (echter `POST /_matrix/client/v3/login`, Access-Token landet in
-einem httpOnly-Cookie, kein serverseitiger Session-Store). Fuer die Web-UI werden daher nur
-`MATRIX_HOMESERVER_URL` und `MATRIX_SERVER_NAME` in der `.env` benoetigt; die restlichen Funktionen
-(Baum lesen, Raeume/Spaces anlegen, verschieben) erfordern serverseitig ausreichend Rechte
-(Server-Admin fuer die Baumansicht via Synapse Admin API, `state_default`-Power im jeweiligen Space
-fuer Erstellen/Verschieben) des eingeloggten Accounts.
+Then open `http://localhost:3000`. Unlike the CLI commands, the web UI does **not** use a fixed
+admin account from `.env` - each person signs in in the browser with their own Matrix credentials
+(a real `POST /_matrix/client/v3/login`, the access token ends up in an httpOnly cookie, no
+server-side session store). The web UI therefore only needs `MATRIX_HOMESERVER_URL` and
+`MATRIX_SERVER_NAME` in `.env`; the remaining features (reading the tree, creating/moving
+rooms/spaces) require the logged-in account to have sufficient rights server-side (server admin
+for the tree view via the Synapse Admin API, `state_default` power in the respective space for
+creating/moving).
 
-Benutzerspezifische Funktionen (z.B. Provisioning einzelner Nutzer ueber die Web-UI) sind bewusst
-noch nicht enthalten und folgen in einem spaeteren Schritt.
+User-specific features (e.g. provisioning individual users via the web UI) are deliberately not
+included yet and will follow in a later step.
 
-## Struktur
+## Structure
 
 ```
-bin/matrix-admin.js     CLI-Einstiegspunkt
-src/cli.js               Command-Definitionen (commander)
-src/config.js             Laedt/validiert .env-Konfiguration
-src/matrixClient.js       Client-Stub fuer die Matrix Admin API
-src/commands/             Ein Modul pro Subcommand
-src/web/server.js         Express-Backend fuer die Web-UI (Login-Cookie, JSON-API)
-public/                   Statisches Web-UI-Frontend (HTML/CSS/Vanilla JS, kein Build-Step)
+bin/matrix-admin.js     CLI entry point
+src/cli.js               Command definitions (commander)
+src/config.js             Loads/validates .env configuration
+src/matrixClient.js       Client wrapper for the Matrix Admin API
+src/commands/             One module per subcommand
+src/web/server.js         Express backend for the web UI (login cookie, JSON API)
+public/                   Static web UI frontend (HTML/CSS/vanilla JS, no build step)
 ```
 
-## Lizenz
+## License
 
-MIT, siehe [LICENSE](LICENSE). Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe.
+MIT, see [LICENSE](LICENSE). Copyright (c) 2026 Prof. Dr.-Ing. Rainer Neumann, Hochschule Karlsruhe.

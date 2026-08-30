@@ -15,24 +15,23 @@ export async function joinCommand(roomIdOrAlias, options) {
 
     try {
       const result = await client.joinRoom(roomId, userId);
-      console.log(`${userId} ist jetzt Mitglied von ${result.room_id ?? roomId}.`);
+      console.log(`${userId} is now a member of ${result.room_id ?? roomId}.`);
     } catch (err) {
       const isNonPublic =
         err.status === 403 && (/restricted room/i.test(err.message) || /not `public`/i.test(err.message));
 
       if (isNonPublic) {
         throw new Error(
-          `${roomId} ist nicht oeffentlich (restricted oder privat) und kann per Admin-API nicht direkt betreten ` +
-            'werden. Weder "!admin users force-join-room" noch "!admin users force-promote" koennen das umgehen ' +
-            '(beide laufen durch dieselbe Join-Pruefung). Es hilft nur ein regulaerer Invite durch ein bestehendes ' +
-            'Mitglied des Raums.'
+          `${roomId} is not public (restricted or private) and cannot be joined directly via the admin API. ` +
+            'Neither "!admin users force-join-room" nor "!admin users force-promote" can work around this ' +
+            '(both go through the same join check). Only a regular invite from an existing member of the room helps.'
         );
       }
 
       throw err;
     }
   } catch (err) {
-    console.error(`Fehler beim Beitreten von ${roomIdOrAlias}: ${err.message}`);
+    console.error(`Failed to join ${roomIdOrAlias}: ${err.message}`);
     process.exitCode = 1;
   }
 }

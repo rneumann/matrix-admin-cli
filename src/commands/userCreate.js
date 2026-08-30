@@ -14,10 +14,10 @@ export async function userCreateCommand(localpart, options) {
       password: options.password,
       admin: options.admin,
     });
-    console.log(`Benutzer angelegt/aktualisiert: ${userId}`);
+    console.log(`User created/updated: ${userId}`);
     console.log(result);
   } catch (err) {
-    console.error(`Fehler beim Anlegen von ${userId}: ${err.message}`);
+    console.error(`Failed to create ${userId}: ${err.message}`);
     process.exitCode = 1;
   }
 }

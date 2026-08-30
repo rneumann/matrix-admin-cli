@@ -15,11 +15,11 @@ export async function grantAdminAllCommand(options) {
     const level = options.level ? Number(options.level) : 100;
 
     const rooms = await adminClient.listAllRooms({});
-    console.log(`${rooms.length} Raeume/Spaces gefunden.`);
+    console.log(`${rooms.length} rooms/spaces found.`);
     console.log(
       options.dryRun
-        ? `[dry-run] wuerde ${targetUserId} zum Admin (Power-Level ${level}) machen in:`
-        : `Vergebe Admin-Rechte (Power-Level ${level}) an ${targetUserId}...`
+        ? `[dry-run] would make ${targetUserId} an admin (power level ${level}) in:`
+        : `Granting admin rights (power level ${level}) to ${targetUserId}...`
     );
 
     let ok = 0;
@@ -44,11 +44,11 @@ export async function grantAdminAllCommand(options) {
     }
 
     if (!options.dryRun) {
-      console.log(`Fertig: ${ok} erfolgreich, ${failed} fehlgeschlagen.`);
+      console.log(`Done: ${ok} succeeded, ${failed} failed.`);
       if (failed > 0) process.exitCode = 1;
     }
   } catch (err) {
-    console.error(`Fehler beim Admin-Grant fuer alle Raeume: ${err.message}`);
+    console.error(`Failed to grant admin for all rooms: ${err.message}`);
     process.exitCode = 1;
   }
 }

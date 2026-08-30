@@ -49,7 +49,7 @@ function setButtonBusy(button, busy, busyText) {
       button.classList.contains('danger-btn-solid') ||
       button.closest('.login-form');
     const spinnerClass = light ? 'spinner spinner-inline-light' : 'spinner spinner-inline';
-    button.innerHTML = `<span class="${spinnerClass}"></span>${busyText || 'Bitte warten…'}`;
+    button.innerHTML = `<span class="${spinnerClass}"></span>${busyText || 'Please wait…'}`;
     button.disabled = true;
   } else {
     button.innerHTML = button.dataset.originalHtml ?? button.innerHTML;
@@ -92,7 +92,7 @@ el.loginForm.addEventListener('submit', async (e) => {
   const password = document.getElementById('login-password').value;
   const submitBtn = el.loginForm.querySelector('button[type="submit"]');
 
-  setButtonBusy(submitBtn, true, 'Anmelden…');
+  setButtonBusy(submitBtn, true, 'Signing in…');
   try {
     const { userId } = await api('/api/login', {
       method: 'POST',
@@ -109,7 +109,7 @@ el.loginForm.addEventListener('submit', async (e) => {
 });
 
 el.logoutBtn.addEventListener('click', async () => {
-  setButtonBusy(el.logoutBtn, true, 'Abmelden…');
+  setButtonBusy(el.logoutBtn, true, 'Signing out…');
   await api('/api/logout', { method: 'POST' }).catch(() => {});
   state.selectedId = null;
   showLogin();
@@ -122,7 +122,7 @@ el.newRoomBtn.addEventListener('click', () => openCreateModal(false));
 
 async function loadTree() {
   setToolbarBusy(true);
-  el.treeRoot.innerHTML = loadingHtml('Lade Spaces/Räume…');
+  el.treeRoot.innerHTML = loadingHtml('Loading spaces/rooms…');
 
   try {
     state.tree = await api('/api/tree');
@@ -135,21 +135,21 @@ async function loadTree() {
       loadDetail(state.selectedId);
     }
   } catch (err) {
-    el.treeRoot.innerHTML = `<p class="error">Fehler beim Laden: ${err.message}</p>`;
+    el.treeRoot.innerHTML = `<p class="error">Failed to load: ${err.message}</p>`;
   } finally {
     setToolbarBusy(false);
   }
 }
 
 function nodeLabel(node) {
-  if (!node) return '(unbekannt)';
-  if (node.unresolved) return `${node.room_id} (nicht auflösbar)`;
+  if (!node) return '(unknown)';
+  if (node.unresolved) return `${node.room_id} (not resolvable)`;
   return node.name || node.canonical_alias || node.room_id;
 }
 
 function badgeFor(node) {
   if (node.unresolved) return { cls: 'unresolved', text: '?' };
-  return node.room_type === 'm.space' ? { cls: 'space', text: 'Space' } : { cls: 'room', text: 'Raum' };
+  return node.room_type === 'm.space' ? { cls: 'space', text: 'Space' } : { cls: 'room', text: 'Room' };
 }
 
 function buildNodeEl(nodeId) {
@@ -167,7 +167,7 @@ function buildNodeEl(nodeId) {
   toggle.className = 'toggle' + (hasChildren ? '' : ' toggle-empty');
   if (hasChildren) {
     toggle.textContent = expanded ? '▾' : '▸';
-    toggle.title = expanded ? 'Einklappen' : 'Aufklappen';
+    toggle.title = expanded ? 'Collapse' : 'Expand';
     toggle.addEventListener('click', (e) => {
       e.stopPropagation();
       if (state.expandedIds.has(nodeId)) {
@@ -213,7 +213,7 @@ function renderTree() {
   el.treeRoot.appendChild(ul);
 
   if (state.tree.topLevelIds.length === 0) {
-    el.treeRoot.innerHTML = '<p class="hint">Keine Raeume/Spaces gefunden.</p>';
+    el.treeRoot.innerHTML = '<p class="hint">No rooms/spaces found.</p>';
   }
 }
 
@@ -222,7 +222,7 @@ function updateContextLabel() {
   if (node && node.room_type === 'm.space') {
     el.contextLabel.textContent = nodeLabel(node);
   } else {
-    el.contextLabel.textContent = 'Wurzel';
+    el.contextLabel.textContent = 'Root';
   }
 }
 
@@ -259,7 +259,7 @@ async function loadDetail(nodeId) {
   if (node.unresolved) {
     const hint = document.createElement('p');
     hint.className = 'hint';
-    hint.textContent = 'Dieser Raum ist auf diesem Server nicht auflösbar (z.B. fremder Homeserver).';
+    hint.textContent = 'This room is not resolvable on this server (e.g. a foreign homeserver).';
     el.detailPanel.appendChild(hint);
     return;
   }
@@ -267,20 +267,20 @@ async function loadDetail(nodeId) {
   const actions = document.createElement('div');
   actions.className = 'detail-actions';
   const moveBtn = document.createElement('button');
-  moveBtn.textContent = 'Verschieben…';
+  moveBtn.textContent = 'Move…';
   moveBtn.addEventListener('click', () => openMoveModal(nodeId));
   actions.appendChild(moveBtn);
 
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'danger-btn';
-  deleteBtn.textContent = 'Löschen…';
+  deleteBtn.textContent = 'Delete…';
   deleteBtn.addEventListener('click', () => openDeleteModal(nodeId));
   actions.appendChild(deleteBtn);
 
   el.detailPanel.appendChild(actions);
 
   const membersSection = document.createElement('div');
-  membersSection.innerHTML = loadingHtml('Lade Mitglieder…');
+  membersSection.innerHTML = loadingHtml('Loading members…');
   el.detailPanel.appendChild(membersSection);
 
   try {
@@ -288,7 +288,7 @@ async function loadDetail(nodeId) {
     membersSection.innerHTML = '';
 
     if (groups.length === 0) {
-      membersSection.innerHTML = '<p class="hint">Keine Mitglieder.</p>';
+      membersSection.innerHTML = '<p class="hint">No members.</p>';
       return;
     }
 
@@ -296,7 +296,7 @@ async function loadDetail(nodeId) {
       const wrap = document.createElement('div');
       wrap.className = 'power-group';
       const h3 = document.createElement('h3');
-      h3.textContent = `Power-Level ${group.level} (${group.userIds.length})`;
+      h3.textContent = `Power level ${group.level} (${group.userIds.length})`;
       wrap.appendChild(h3);
       const ul = document.createElement('ul');
       for (const userId of group.userIds) {
@@ -308,7 +308,7 @@ async function loadDetail(nodeId) {
       membersSection.appendChild(wrap);
     }
   } catch (err) {
-    membersSection.innerHTML = `<p class="error">Fehler beim Laden der Mitglieder: ${err.message}</p>`;
+    membersSection.innerHTML = `<p class="error">Failed to load members: ${err.message}</p>`;
   }
 }
 
@@ -336,14 +336,14 @@ function openCreateModal(isSpace) {
 
   const form = document.createElement('form');
   form.innerHTML = `
-    <h2>${isSpace ? 'Neuen Space' : 'Neuen Raum'} anlegen</h2>
-    <p class="hint">Wird angelegt in: <strong>${parentNode ? nodeLabel(parentNode) : 'Wurzel (Toplevel)'}</strong></p>
+    <h2>Create ${isSpace ? 'space' : 'room'}</h2>
+    <p class="hint">Will be created in: <strong>${parentNode ? nodeLabel(parentNode) : 'Root (top level)'}</strong></p>
     <label>Name<input name="name" type="text" required autofocus /></label>
     <label>Topic (optional)<input name="topic" type="text" /></label>
     <p class="error" data-error></p>
     <div class="modal-actions">
-      <button type="button" data-cancel>Abbrechen</button>
-      <button type="submit" class="primary-btn">Anlegen</button>
+      <button type="button" data-cancel>Cancel</button>
+      <button type="submit" class="primary-btn">Create</button>
     </div>
   `;
 
@@ -360,7 +360,7 @@ function openCreateModal(isSpace) {
     const submitBtn = form.querySelector('button[type="submit"]');
 
     modalBusy = true;
-    setButtonBusy(submitBtn, true, 'Lege an…');
+    setButtonBusy(submitBtn, true, 'Creating…');
     cancelBtn.disabled = true;
     try {
       await api('/api/rooms', {
@@ -392,19 +392,19 @@ function openMoveModal(nodeId) {
     .join('');
 
   form.innerHTML = `
-    <h2>Verschieben</h2>
+    <h2>Move</h2>
     <p class="hint">${nodeLabel(node)}</p>
     <label>
-      Ziel
+      Target
       <select name="target">
-        <option value="">Toplevel-Ebene (kein Space)</option>
+        <option value="">Top level (no space)</option>
         ${optionsHtml}
       </select>
     </label>
     <p class="error" data-error></p>
     <div class="modal-actions">
-      <button type="button" data-cancel>Abbrechen</button>
-      <button type="submit" class="primary-btn">Verschieben</button>
+      <button type="button" data-cancel>Cancel</button>
+      <button type="submit" class="primary-btn">Move</button>
     </div>
   `;
 
@@ -420,7 +420,7 @@ function openMoveModal(nodeId) {
     const submitBtn = form.querySelector('button[type="submit"]');
 
     modalBusy = true;
-    setButtonBusy(submitBtn, true, 'Verschiebe…');
+    setButtonBusy(submitBtn, true, 'Moving…');
     cancelBtn.disabled = true;
     form.target.disabled = true;
     try {
@@ -445,24 +445,24 @@ function openMoveModal(nodeId) {
 function openDeleteModal(nodeId) {
   const node = state.tree.nodes[nodeId];
   const hasChildren = Boolean(node.children && node.children.length > 0);
-  const typeLabel = node.room_type === 'm.space' ? 'Space' : 'Raum';
+  const typeLabel = node.room_type === 'm.space' ? 'space' : 'room';
 
   const form = document.createElement('form');
   form.innerHTML = `
-    <h2>${typeLabel} löschen</h2>
+    <h2>Delete ${typeLabel}</h2>
     <p class="hint">${nodeLabel(node)}</p>
     <p class="warning-text">
-      Löscht den ${typeLabel} unwiderruflich vom Server (inkl. aller Nachrichten). Diese Aktion kann
-      nicht rückgängig gemacht werden.${
+      Permanently deletes the ${typeLabel} from the server (including all messages). This action
+      cannot be undone.${
         hasChildren
-          ? ' Enthaltene Räume/Spaces werden dabei NICHT mitgelöscht, verlieren aber ihre Einordnung.'
+          ? ' Rooms/spaces inside it are NOT deleted, but they lose their place in the hierarchy.'
           : ''
       }
     </p>
     <p class="error" data-error></p>
     <div class="modal-actions">
-      <button type="button" data-cancel>Abbrechen</button>
-      <button type="submit" class="danger-btn-solid">Endgültig löschen</button>
+      <button type="button" data-cancel>Cancel</button>
+      <button type="submit" class="danger-btn-solid">Delete permanently</button>
     </div>
   `;
 
@@ -477,13 +477,13 @@ function openDeleteModal(nodeId) {
     const submitBtn = form.querySelector('button[type="submit"]');
 
     modalBusy = true;
-    setButtonBusy(submitBtn, true, 'Lösche…');
+    setButtonBusy(submitBtn, true, 'Deleting…');
     cancelBtn.disabled = true;
     try {
       await api(`/api/rooms/${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
       if (state.selectedId === nodeId) {
         state.selectedId = null;
-        el.detailPanel.innerHTML = '<p class="hint">Waehle links einen Space oder Raum aus.</p>';
+        el.detailPanel.innerHTML = '<p class="hint">Select a space or room on the left.</p>';
       }
       closeModal();
       await loadTree();

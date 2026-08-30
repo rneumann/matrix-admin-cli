@@ -10,10 +10,10 @@ export async function userListCommand(options) {
 
   try {
     const result = await client.listUsers({ limit: options.limit });
-    console.log(`Benutzer (${result.total ?? result.users?.length ?? 0}):`);
+    console.log(`Users (${result.total ?? result.users?.length ?? 0}):`);
     console.log(result.users ?? result);
   } catch (err) {
-    console.error(`Fehler beim Abrufen der Benutzerliste: ${err.message}`);
+    console.error(`Failed to fetch user list: ${err.message}`);
     process.exitCode = 1;
   }
 }

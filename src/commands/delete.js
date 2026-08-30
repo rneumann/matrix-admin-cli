@@ -13,14 +13,14 @@ export async function deleteCommand(roomIdOrAlias, options) {
 
     if (!options.yes) {
       throw new Error(
-        `Das Loeschen von ${roomIdOrAlias} (${roomId}) ist unwiderruflich (purge). Zur Bestaetigung --yes anhaengen.`
+        `Deleting ${roomIdOrAlias} (${roomId}) is permanent (purge). Add --yes to confirm.`
       );
     }
 
     await client.deleteRoom(roomId);
-    console.log(`${roomIdOrAlias} (${roomId}) wurde geloescht.`);
+    console.log(`${roomIdOrAlias} (${roomId}) was deleted.`);
   } catch (err) {
-    console.error(`Fehler beim Loeschen von ${roomIdOrAlias}: ${err.message}`);
+    console.error(`Failed to delete ${roomIdOrAlias}: ${err.message}`);
     process.exitCode = 1;
   }
 }

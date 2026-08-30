@@ -6,15 +6,15 @@ import { MatrixClient } from '../matrixClient.js';
 import { toFullUserId } from '../userId.js';
 
 /**
- * Aggregiert Name, Berechtigungen, Raeume und Spaces eines Benutzers aus
- * mehreren Synapse-Admin-API-Aufrufen zu einer Uebersicht.
- * Raeume/Spaces werden als { name, "power-level" }-Objekte ausgegeben: name
- * ist der canonical_alias (Fallback: room_id), "power-level" der effektive
- * Power-Level des Benutzers in diesem Raum (aus m.room.power_levels).
+ * Aggregates a user's name, permissions, rooms and spaces from several
+ * Synapse Admin API calls into a single overview.
+ * Rooms/spaces are returned as { name, "power-level" } objects: name is
+ * the canonical_alias (fallback: room_id), "power-level" is the user's
+ * effective power level in that room (from m.room.power_levels).
  *
  * @param {MatrixClient} client
- * @param {string} idOrLocalpart z.B. "womi0003" oder "@womi0003:matrix.h-ka.de"
- * @param {string} serverName Fallback-Domain, falls nur ein Localpart uebergeben wird
+ * @param {string} idOrLocalpart e.g. "testuser" or "@testuser:matrix.example.org"
+ * @param {string} serverName fallback domain if only a localpart is given
  */
 export async function getUserOverview(client, idOrLocalpart, serverName) {
   const userId = toFullUserId(idOrLocalpart, serverName);
@@ -66,23 +66,23 @@ export async function userInfoCommand(idOrLocalpart, options) {
       return;
     }
 
-    console.log(`Benutzer:     ${overview.user_id}`);
-    console.log(`Name:         ${overview.name ?? '(kein Displayname)'}`);
-    console.log(`Server-Admin: ${overview.admin ? 'ja' : 'nein'}`);
-    console.log(`Deaktiviert:  ${overview.deactivated ? 'ja' : 'nein'}`);
-    console.log(`Gesperrt:     ${overview.locked ? 'ja' : 'nein'}`);
+    console.log(`User:         ${overview.user_id}`);
+    console.log(`Name:         ${overview.name ?? '(no display name)'}`);
+    console.log(`Server admin: ${overview.admin ? 'yes' : 'no'}`);
+    console.log(`Deactivated:  ${overview.deactivated ? 'yes' : 'no'}`);
+    console.log(`Locked:       ${overview.locked ? 'yes' : 'no'}`);
 
-    console.log(`Raeume (${overview.rooms.length}):`);
+    console.log(`Rooms (${overview.rooms.length}):`);
     for (const room of overview.rooms) {
-      console.log(`  - ${room.name} (Power-Level: ${room['power-level']})`);
+      console.log(`  - ${room.name} (power level: ${room['power-level']})`);
     }
 
     console.log(`Spaces (${overview.spaces.length}):`);
     for (const space of overview.spaces) {
-      console.log(`  - ${space.name} (Power-Level: ${space['power-level']})`);
+      console.log(`  - ${space.name} (power level: ${space['power-level']})`);
     }
   } catch (err) {
-    console.error(`Fehler beim Abrufen der Benutzer-Uebersicht: ${err.message}`);
+    console.error(`Failed to fetch user overview: ${err.message}`);
     process.exitCode = 1;
   }
 }

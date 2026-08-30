@@ -19,10 +19,10 @@ function errorMessage(err) {
 }
 
 /**
- * Baut die per getSpaceHierarchy() gelieferten Maps in eine JSON-taugliche
- * Struktur fuer das Frontend um. Kinder, die auf dem Server nicht (mehr)
- * aufloesbar sind (z.B. fremder Server), werden als Platzhalter-Knoten mit
- * unresolved:true mitgeliefert, damit der Baum trotzdem vollstaendig bleibt.
+ * Converts the Maps returned by getSpaceHierarchy() into a JSON-friendly
+ * structure for the frontend. Children that are no longer resolvable on
+ * this server (e.g. a foreign homeserver) are included as placeholder
+ * nodes with unresolved:true, so the tree still comes out complete.
  */
 function serializeHierarchy({ rooms, byId, childrenMap, topLevelIds }) {
   const nodes = {};
@@ -62,7 +62,7 @@ function auth(config) {
   return (req, res, next) => {
     const accessToken = req.cookies?.[TOKEN_COOKIE];
     if (!accessToken) {
-      return res.status(401).json({ error: 'Nicht angemeldet.' });
+      return res.status(401).json({ error: 'Not signed in.' });
     }
     req.matrixClient = new MatrixClient({
       homeserverUrl: config.homeserverUrl,
@@ -82,7 +82,7 @@ export function createServer(config) {
   app.post('/api/login', async (req, res) => {
     const { username, password } = req.body || {};
     if (!username || !password) {
-      return res.status(400).json({ error: 'username und password erforderlich.' });
+      return res.status(400).json({ error: 'username and password are required.' });
     }
 
     const client = new MatrixClient({
@@ -114,7 +114,7 @@ export function createServer(config) {
       const me = await req.matrixClient.whoami();
       res.json({ userId: me.user_id });
     } catch {
-      res.status(401).json({ error: 'Session ungueltig.' });
+      res.status(401).json({ error: 'Invalid session.' });
     }
   });
 
@@ -139,7 +139,7 @@ export function createServer(config) {
   app.post('/api/rooms', auth(config), async (req, res) => {
     const { name, isSpace, topic, parentId } = req.body || {};
     if (!name) {
-      return res.status(400).json({ error: 'name erforderlich.' });
+      return res.status(400).json({ error: 'name is required.' });
     }
     try {
       const roomId = await req.matrixClient.createRoom({

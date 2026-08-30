@@ -28,177 +28,177 @@ export function buildCli() {
 
   program
     .name('matrix-admin')
-    .description('CLI-Tools zum Testen des Benutzer-Provisionings auf einem Matrix-Server')
+    .description('CLI tools for testing user provisioning on a Matrix server')
     .version('0.1.0');
 
   program
     .command('whoami')
-    .description('Konfiguration anzeigen und Verbindung zum Homeserver testen')
+    .description('Show configuration and test the connection to the homeserver')
     .action(whoamiCommand);
 
   const user = program
     .command('user')
-    .description('Benutzer-Provisioning');
+    .description('User provisioning');
 
   user
     .command('create <localpart>')
-    .description('Neuen Benutzer anlegen (z.B. "testuser" -> @testuser:server_name)')
-    .option('-p, --password <password>', 'Initiales Passwort')
-    .option('--admin', 'Benutzer als Server-Admin anlegen', false)
+    .description('Create a new user (e.g. "testuser" -> @testuser:server_name)')
+    .option('-p, --password <password>', 'Initial password')
+    .option('--admin', 'Create the user as a server admin', false)
     .action(userCreateCommand);
 
   user
     .command('list')
-    .description('Bestehende Benutzer auflisten')
-    .option('--limit <n>', 'Maximale Anzahl an Ergebnissen', '50')
+    .description('List existing users')
+    .option('--limit <n>', 'Maximum number of results', '50')
     .action(userListCommand);
 
   user
     .command('deactivate <userId>')
-    .description('Benutzer deaktivieren (vollstaendige Matrix-ID, z.B. @testuser:server_name)')
-    .option('--erase', 'Zusaetzlich alle Nutzerdaten loeschen', false)
+    .description('Deactivate a user (full Matrix ID, e.g. @testuser:server_name)')
+    .option('--erase', 'Also erase all user data', false)
     .action(userDeactivateCommand);
 
   user
     .command('info <userId>')
     .description(
-      'Uebersicht zu einem Benutzer: Name, Berechtigungen, Raeume, Spaces (Localpart z.B. "womi0003" oder volle User-ID)'
+      'Overview of a user: name, permissions, rooms, spaces (localpart e.g. "testuser" or full user ID)'
     )
-    .option('--json', 'Ausgabe als JSON-Record', false)
+    .option('--json', 'Output as a JSON record', false)
     .action(userInfoCommand);
 
   user
     .command('check-password <userId>')
     .description(
-      'Passwort per echtem Login-Versuch validieren ("bind"), Session wird sofort wieder ausgeloggt. ' +
-        'Ohne --password wird interaktiv (maskiert) danach gefragt.'
+      'Validate a password via a real login attempt ("bind"), the session is logged out immediately. ' +
+        'Without --password you are prompted interactively (masked input).'
     )
-    .option('-p, --password <password>', 'Zu pruefendes Passwort (sonst Prompt bzw. MATRIX_CHECK_PASSWORD)')
+    .option('-p, --password <password>', 'Password to check (otherwise prompted, or MATRIX_CHECK_PASSWORD)')
     .action(userCheckPasswordCommand);
 
   const room = program
     .command('room')
-    .description('Raeume (readonly)');
+    .description('Rooms (read-only)');
 
   room
     .command('list')
-    .description('Raeume auf dem Server auflisten')
-    .option('--limit <n>', 'Maximale Anzahl an Ergebnissen', '50')
-    .option('--search <term>', 'Nach Raumname/-alias filtern (search_term)')
+    .description('List rooms on the server')
+    .option('--limit <n>', 'Maximum number of results', '50')
+    .option('--search <term>', 'Filter by room name/alias (search_term)')
     .action(roomListCommand);
 
   room
     .command('power-levels <roomId>')
     .description(
-      'm.room.power_levels Event eines Raums anzeigen (Room-ID, Alias oder Raumname). ' +
-        'Mit --user den effektiven Level fuer einen Benutzer aufloesen.'
+      'Show a room\'s m.room.power_levels event (room ID, alias, or room name). ' +
+        'Use --user to resolve the effective level for a user.'
     )
-    .option('--user <userId>', 'Power-Level fuer diesen Benutzer aufloesen (explizit oder users_default)')
+    .option('--user <userId>', 'Resolve the power level for this user (explicit or users_default)')
     .action(roomPowerLevelsCommand);
 
   room
     .command('promote <roomId>')
     .description(
-      'Setzt den Power-Level eines (bereits im Raum befindlichen) Benutzers per ' +
-        '"!admin users force-promote" im Server-Admin-Room (MATRIX_ADMIN_ROOM_ID). Bewirkt keinen Join.'
+      'Sets the power level of a user already in the room via ' +
+        '"!admin users force-promote" in the server admin room (MATRIX_ADMIN_ROOM_ID). Does not cause a join.'
     )
-    .option('--user <userId>', 'Zielbenutzer statt des aktuellen Admin-Users (siehe whoami)')
+    .option('--user <userId>', 'Target user instead of the current admin user (see whoami)')
     .action(roomPromoteCommand);
 
   const space = program
     .command('space')
-    .description('Spaces (readonly)');
+    .description('Spaces (read-only)');
 
   space
     .command('list')
-    .description('Spaces auf dem Server auflisten (Raeume mit room_type m.space)')
-    .option('--limit <n>', 'Maximale Anzahl an Ergebnissen', '50')
-    .option('--search <term>', 'Nach Space-Name/-alias filtern (search_term)')
+    .description('List spaces on the server (rooms with room_type m.space)')
+    .option('--limit <n>', 'Maximum number of results', '50')
+    .option('--search <term>', 'Filter by space name/alias (search_term)')
     .action(spaceListCommand);
 
   space
     .command('members <spaceId>')
-    .description('Mitglieder eines Space auflisten (Room-ID, Alias oder Space-Name)')
+    .description('List a space\'s members (room ID, alias, or space name)')
     .action(spaceMembersCommand);
 
   space
     .command('is-member <spaceId> <userId>')
-    .description('Prueft, ob ein Benutzer Mitglied eines Space ist (Room-ID, Alias oder Space-Name)')
+    .description('Check whether a user is a member of a space (room ID, alias, or space name)')
     .action(spaceIsMemberCommand);
 
   space
     .command('tree')
     .description(
-      'Hierarchische Ausgabe aller Spaces/Raeume auf dem Server (Verschachtelung ueber m.space.child)'
+      'Hierarchical listing of all spaces/rooms on the server (nesting via m.space.child)'
     )
-    .option('--root <spaceIdOrAlias>', 'Nur den Teilbaum ab diesem Space anzeigen (statt aller Toplevel-Knoten)')
+    .option('--root <spaceIdOrAlias>', 'Only show the subtree starting at this space (instead of all top-level nodes)')
     .action(spaceTreeCommand);
 
   program
     .command('move <roomIdOrAlias>')
     .description(
-      'Verschiebt einen Raum oder Space in einen anderen Space, oder auf Toplevel-Ebene ' +
-        '(Root-ID, Alias oder Name; entfernt m.space.child im/aus dem/den Eltern-Space(s) und setzt es im Ziel-Space)'
+      'Moves a room or space into another space, or to the top level ' +
+        '(room ID, alias, or name; removes m.space.child from the parent space(s) and sets it on the target space)'
     )
-    .option('--to <spaceIdOrAlias>', 'Ziel-Space, in den verschoben werden soll')
-    .option('--top-level', 'Auf Toplevel-Ebene verschieben (aus allen Eltern-Spaces entfernen)', false)
+    .option('--to <spaceIdOrAlias>', 'Target space to move into')
+    .option('--top-level', 'Move to the top level (remove from all parent spaces)', false)
     .option(
       '--from <spaceIdOrAlias>',
-      'Nur aus diesem einen Eltern-Space entfernen, statt aus allen aktuell gefundenen'
+      'Only remove from this one parent space, instead of from all currently found'
     )
     .action(moveCommand);
 
   program
     .command('delete <roomIdOrAlias>')
     .description(
-      'Loescht einen Raum/Space unwiderruflich vom Server (Synapse Admin API, purge - inkl. aller Nachrichten). ' +
-        'Erfordert --yes zur Bestaetigung.'
+      'Permanently deletes a room/space from the server (Synapse Admin API, purge - including all messages). ' +
+        'Requires --yes to confirm.'
     )
-    .option('--yes', 'Bestaetigt das unwiderrufliche Loeschen', false)
+    .option('--yes', 'Confirms the permanent deletion', false)
     .action(deleteCommand);
 
   program
     .command('join <roomIdOrAlias>')
     .description(
-      'Einzelnen Raum oder Space beitreten (Room-ID, Alias oder Raumname wie in "room list"/"space list" angezeigt)'
+      'Join a single room or space (room ID, alias, or room name as shown by "room list"/"space list")'
     )
-    .option('--user <userId>', 'Anderen Benutzer beitreten lassen statt des aktuellen Admin-Users (siehe whoami)')
+    .option('--user <userId>', 'Have another user join instead of the current admin user (see whoami)')
     .action(joinCommand);
 
   program
     .command('join-all')
     .description(
-      'Aktuellen Admin-User (siehe whoami) per Admin-API allen Raeumen und Spaces auf dem Server beitreten lassen'
+      'Have the current admin user (see whoami) join all rooms and spaces on the server via the admin API'
     )
-    .option('--dry-run', 'Nur anzeigen, welchen Raeumen beigetreten wuerde, ohne tatsaechlich beizutreten', false)
+    .option('--dry-run', 'Only show which rooms would be joined, without actually joining', false)
     .action(joinAllCommand);
 
   program
     .command('grant-admin <roomIdOrAlias>')
     .description(
-      'Macht MATRIX_TARGET_USER zum Admin (Power-Level) in einem Raum: der aktuelle Admin ' +
-        '(MATRIX_ADMIN_USER, muss bereits Mitglied sein) laedt ein, MATRIX_TARGET_USER nimmt selbst an, ' +
-        'Power-Level wird gesetzt. Erfordert MATRIX_TARGET_USER/MATRIX_TARGET_PASSWORD in der .env.'
+      'Makes MATRIX_TARGET_USER an admin (power level) in a room: the current admin ' +
+        '(MATRIX_ADMIN_USER, must already be a member) invites, MATRIX_TARGET_USER accepts itself, ' +
+        'the power level is set. Requires MATRIX_TARGET_USER/MATRIX_TARGET_PASSWORD in .env.'
     )
-    .option('--level <n>', 'Ziel-Power-Level', '100')
+    .option('--level <n>', 'Target power level', '100')
     .action(grantAdminCommand);
 
   program
     .command('serve')
     .description(
-      'Startet die interaktive Web-UI (eigener Login pro Session, Baumansicht, Mitglieder nach Power-Level, ' +
-        'Spaces/Raeume erstellen und verschieben)'
+      'Starts the interactive web UI (per-session login, tree view, members by power level, ' +
+        'create and move spaces/rooms)'
     )
-    .option('--port <n>', 'Port fuer den Web-Server', '3000')
+    .option('--port <n>', 'Port for the web server', '3000')
     .action(serveCommand);
 
   program
     .command('grant-admin-all')
     .description(
-      'Wie grant-admin, aber fuer alle Raeume/Spaces, in denen MATRIX_ADMIN_USER bereits ausreichend Power hat.'
+      'Like grant-admin, but for all rooms/spaces in which MATRIX_ADMIN_USER already has sufficient power.'
     )
-    .option('--level <n>', 'Ziel-Power-Level', '100')
-    .option('--dry-run', 'Nur anzeigen, fuer welche Raeume Admin-Rechte vergeben wuerden', false)
+    .option('--level <n>', 'Target power level', '100')
+    .option('--dry-run', 'Only show which rooms admin rights would be granted for', false)
     .action(grantAdminAllCommand);
 
   return program;
