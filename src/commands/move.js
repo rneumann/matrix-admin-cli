@@ -20,14 +20,20 @@ export async function moveCommand(roomIdOrAlias, options) {
     const toSpaceId = options.to ? await client.resolveRoomId(options.to) : null;
     const fromSpaceId = options.from ? await client.resolveRoomId(options.from) : null;
 
-    const { removedFrom, addedTo, skipped } = await client.moveNode(roomId, {
+    const { removedFrom, addedTo, skipped, failedRemovals } = await client.moveNode(roomId, {
       toSpaceId,
       fromSpaceId,
       includeRemote: Boolean(options.includeRemote),
+      autoJoin: Boolean(options.autoJoin),
     });
 
     for (const { roomId: skippedId, reason } of skipped) {
       console.warn(`Warning: space ${skippedId} skipped (state not readable): ${reason}`);
+    }
+
+    for (const { roomId: failedId, reason } of failedRemovals) {
+      console.error(`Could not remove from space ${failedId}: ${reason}`);
+      process.exitCode = 1;
     }
 
     for (const parentId of removedFrom) {

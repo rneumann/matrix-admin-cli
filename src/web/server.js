@@ -155,11 +155,12 @@ export function createServer(config) {
   });
 
   app.post('/api/rooms/:roomId/move', auth(config), async (req, res) => {
-    const { toSpaceId, fromSpaceId } = req.body || {};
+    const { toSpaceId, fromSpaceId, autoJoin } = req.body || {};
     try {
       const result = await req.matrixClient.moveNode(req.params.roomId, {
         toSpaceId: toSpaceId || null,
         fromSpaceId: fromSpaceId || null,
+        autoJoin: Boolean(autoJoin),
       });
       res.json(result);
     } catch (err) {

@@ -66,6 +66,13 @@ node bin/matrix-admin.js move 'SubRoom' --from 'OldSpace' --to 'TargetSpace'
 node bin/matrix-admin.js move 'SubRoom' --to 'TargetSpace' --include-remote
 node bin/matrix-admin.js space tree --include-remote
 
+# m.space.child is a normal state event: the admin user has to be joined to the space
+# and needs state_default power there, otherwise Synapse rejects the move with
+# "Auth check failed: sender's membership `leave` is not `join`". --auto-join joins the
+# affected spaces via the admin API first (public rooms on this server only - for
+# non-public ones a regular invite is still required, see "join").
+node bin/matrix-admin.js move 'SubRoom' --to 'TargetSpace' --auto-join
+
 # Permanently delete a room/space from the server (purge, including all messages).
 # Best-effort removes the m.space.child references from all parent spaces first.
 node bin/matrix-admin.js delete 'SubRoom' --yes

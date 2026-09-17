@@ -158,6 +158,12 @@ export function buildCli() {
         'local server has no complete state for them',
       false
     )
+    .option(
+      '--auto-join',
+      'Automatically join spaces the admin user is not a member of (admin API, only works for ' +
+        'public rooms on this server) instead of failing',
+      false
+    )
     .action(moveCommand);
 
   program

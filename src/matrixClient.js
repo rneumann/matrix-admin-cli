@@ -30,6 +30,34 @@ async function mapWithConcurrency(items, limit, fn) {
 
 const SPACE_SCAN_CONCURRENCY = 8;
 
+/**
+ * Turns the raw Synapse rejection of a state write into an actionable
+ * message. m.space.child/m.space.parent are normal state events: the
+ * sender has to be joined to the room ("Auth check failed: sender's
+ * membership `leave` is not `join`") and needs at least state_default
+ * power there.
+ */
+function explainStateWriteError(err, roomId, userId) {
+  const raw = err.data?.error || err.message;
+
+  if (/membership .*is not .?join/i.test(raw) || /not in room/i.test(raw)) {
+    return new Error(
+      `${userId} is not a member of ${roomId} - m.space.child can only be changed from inside the ` +
+        `space. Join it first ("matrix-admin join ${roomId}") or rerun with --auto-join. ` +
+        `Server said: ${raw}`
+    );
+  }
+
+  if (err.status === 403) {
+    return new Error(
+      `${userId} is not allowed to change m.space.child in ${roomId} (power level below ` +
+        `state_default?). Server said: ${raw}`
+    );
+  }
+
+  return err;
+}
+
 export class MatrixClient {
   constructor({ homeserverUrl, adminUser, adminPassword, serverName, accessToken }) {
     this.homeserverUrl = homeserverUrl;
@@ -331,6 +359,47 @@ export class MatrixClient {
   }
 
   /**
+   * User ID of the logged-in account, cached for this client instance.
+   */
+  async getOwnUserId() {
+    if (!this.ownUserId) {
+      this.ownUserId = (await this.whoami()).user_id;
+    }
+    return this.ownUserId;
+  }
+
+  /**
+   * Makes sure the logged-in user is joined to a room before a state event
+   * is written there. Without autoJoin this only reports the problem up
+   * front, instead of letting the server reject the event later. autoJoin
+   * uses the admin API, which only works for public rooms on this server -
+   * non-public rooms still need a regular invite (see joinCommand).
+   */
+  async ensureMembership(roomId, { autoJoin = false } = {}) {
+    const userId = await this.getOwnUserId();
+    const members = await this.getRoomMembers(roomId).catch(() => null);
+
+    // Membership not determinable (e.g. incomplete state): let the write attempt decide.
+    if (!members) return;
+    if ((members.members ?? []).includes(userId)) return;
+
+    if (!autoJoin) {
+      throw new Error(
+        `${userId} is not a member of ${roomId} - m.space.child can only be changed from inside ` +
+          `the space. Join it first ("matrix-admin join ${roomId}") or rerun with --auto-join.`
+      );
+    }
+
+    try {
+      await this.joinRoom(roomId, userId);
+    } catch (err) {
+      throw new Error(
+        `${userId} is not a member of ${roomId} and could not be joined automatically: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * True if the room ID belongs to this homeserver. Room IDs carry the
    * server that created the room in their domain part
    * (!localpart:server.name).
@@ -542,7 +611,7 @@ export class MatrixClient {
    * the local spaces only (see listScannableSpaces); spaces that had to be
    * skipped are returned in "skipped".
    */
-  async moveNode(roomId, { toSpaceId = null, fromSpaceId = null, includeRemote = false } = {}) {
+  async moveNode(roomId, { toSpaceId = null, fromSpaceId = null, includeRemote = false, autoJoin = false } = {}) {
     if (toSpaceId) {
       if (toSpaceId === roomId) {
         throw new Error('A room/space cannot be moved into itself.');
@@ -559,12 +628,23 @@ export class MatrixClient {
     const parents = fromSpaceId
       ? [{ room_id: fromSpaceId }]
       : await this.findParentSpaces(roomId, { includeRemote, onSkip: (info) => skipped.push(info) });
+    const userId = await this.getOwnUserId();
     const removedFrom = [];
+    const failedRemovals = [];
 
     for (const parent of parents) {
       if (toSpaceId && parent.room_id === toSpaceId) continue;
 
-      await this.removeSpaceChild(parent.room_id, roomId);
+      // One unremovable parent must not abort the rest of the move: the other
+      // parents and the target space are independent of it.
+      try {
+        await this.ensureMembership(parent.room_id, { autoJoin });
+        await this.removeSpaceChild(parent.room_id, roomId);
+      } catch (err) {
+        failedRemovals.push({ roomId: parent.room_id, reason: explainStateWriteError(err, parent.room_id, userId).message });
+        continue;
+      }
+
       try {
         await this.removeSpaceParent(roomId, parent.room_id);
       } catch {
@@ -574,7 +654,13 @@ export class MatrixClient {
     }
 
     if (toSpaceId) {
-      await this.addSpaceChild(toSpaceId, roomId);
+      try {
+        await this.ensureMembership(toSpaceId, { autoJoin });
+        await this.addSpaceChild(toSpaceId, roomId);
+      } catch (err) {
+        throw explainStateWriteError(err, toSpaceId, userId);
+      }
+
       try {
         await this.setSpaceParent(roomId, toSpaceId);
       } catch {
@@ -582,7 +668,7 @@ export class MatrixClient {
       }
     }
 
-    return { removedFrom, addedTo: toSpaceId, skipped };
+    return { removedFrom, addedTo: toSpaceId, skipped, failedRemovals };
   }
 
   /**

@@ -424,10 +424,26 @@ function openMoveModal(nodeId) {
     cancelBtn.disabled = true;
     form.target.disabled = true;
     try {
-      await api(`/api/rooms/${encodeURIComponent(nodeId)}/move`, {
+      const result = await api(`/api/rooms/${encodeURIComponent(nodeId)}/move`, {
         method: 'POST',
         body: JSON.stringify({ toSpaceId }),
       });
+
+      // The move into the target space succeeded, but the room could not be
+      // removed from every old parent space (usually: no membership or not
+      // enough power there) - it now hangs in more than one space.
+      if (result.failedRemovals?.length) {
+        await loadTree();
+        errorEl.textContent = result.failedRemovals
+          .map((f) => `Could not remove from ${f.roomId}: ${f.reason}`)
+          .join(' ');
+        setButtonBusy(submitBtn, false);
+        cancelBtn.disabled = false;
+        form.target.disabled = false;
+        modalBusy = false;
+        return;
+      }
+
       closeModal();
       await loadTree();
     } catch (err) {
