@@ -331,6 +331,43 @@ export class MatrixClient {
   }
 
   /**
+   * True if the room ID belongs to this homeserver. Room IDs carry the
+   * server that created the room in their domain part
+   * (!localpart:server.name).
+   */
+  isLocalRoom(roomId) {
+    const domain = String(roomId).split(':').slice(1).join(':');
+    return domain === this.serverName;
+  }
+
+  /**
+   * All spaces that are scanned when walking the hierarchy. Federated
+   * (remote) spaces are skipped by default: the local server usually has
+   * no complete state for them, so GET /_synapse/admin/v1/rooms/<id>/state
+   * answers with HTTP 500 ("Missing state for ..."), and their
+   * m.space.child events cannot be administered from here anyway.
+   */
+  async listScannableSpaces({ includeRemote = false } = {}) {
+    const spaces = await this.listAllRooms({ room_types: ['m.space'] });
+    return includeRemote ? spaces : spaces.filter((s) => this.isLocalRoom(s.room_id));
+  }
+
+  /**
+   * getSpaceChildren() that never throws: a space whose state cannot be
+   * read (typically a federated room without complete local state) is
+   * reported via onSkip and treated as having no children, instead of
+   * aborting the whole scan.
+   */
+  async getSpaceChildrenSafe(spaceId, onSkip) {
+    try {
+      return await this.getSpaceChildren(spaceId);
+    } catch (err) {
+      onSkip?.({ roomId: spaceId, reason: err.message });
+      return [];
+    }
+  }
+
+  /**
    * Reads all m.space.child events of a space (its child rooms/spaces).
    * Events with empty content count as removed per spec and are filtered
    * out.
@@ -381,13 +418,14 @@ export class MatrixClient {
   /**
    * Finds all spaces on the server that currently list roomId as a child
    * (via m.space.child, not via the potentially unreliable m.space.parent
-   * on the child itself).
+   * on the child itself). Spaces whose state is not readable are skipped
+   * (see getSpaceChildrenSafe / listScannableSpaces).
    */
-  async findParentSpaces(roomId) {
-    const spaces = await this.listAllRooms({ room_types: ['m.space'] });
+  async findParentSpaces(roomId, { includeRemote = false, onSkip } = {}) {
+    const spaces = await this.listScannableSpaces({ includeRemote });
 
     const hits = await mapWithConcurrency(spaces, SPACE_SCAN_CONCURRENCY, async (space) => {
-      const children = await this.getSpaceChildren(space.room_id);
+      const children = await this.getSpaceChildrenSafe(space.room_id, onSkip);
       return children.some((c) => c.roomId === roomId) ? space : null;
     });
 
@@ -403,7 +441,7 @@ export class MatrixClient {
     if (seen.has(roomId)) return false;
     seen.add(roomId);
 
-    const children = await this.getSpaceChildren(roomId).catch(() => []);
+    const children = await this.getSpaceChildrenSafe(roomId);
     for (const child of children) {
       if (await this.isDescendant(child.roomId, targetId, seen)) return true;
     }
@@ -413,25 +451,30 @@ export class MatrixClient {
   /**
    * Builds the server's complete space hierarchy: all rooms/spaces, plus
    * each space's children (from m.space.child). Basis for a hierarchical
-   * tree view.
+   * tree view. Federated spaces are not scanned by default (their state is
+   * often unavailable locally); spaces that could not be read are returned
+   * in "skipped".
    */
-  async getSpaceHierarchy() {
+  async getSpaceHierarchy({ includeRemote = false } = {}) {
     const rooms = await this.listAllRooms({});
     const byId = new Map(rooms.map((r) => [r.room_id, r]));
-    const spaces = rooms.filter((r) => r.room_type === 'm.space');
+    const spaces = rooms
+      .filter((r) => r.room_type === 'm.space')
+      .filter((r) => includeRemote || this.isLocalRoom(r.room_id));
 
     const childrenMap = new Map();
     const parentIds = new Set();
+    const skipped = [];
 
     await mapWithConcurrency(spaces, SPACE_SCAN_CONCURRENCY, async (space) => {
-      const children = await this.getSpaceChildren(space.room_id);
+      const children = await this.getSpaceChildrenSafe(space.room_id, (info) => skipped.push(info));
       childrenMap.set(space.room_id, children);
       for (const child of children) parentIds.add(child.roomId);
     });
 
     const topLevelIds = rooms.map((r) => r.room_id).filter((id) => !parentIds.has(id));
 
-    return { rooms, byId, childrenMap, topLevelIds };
+    return { rooms, byId, childrenMap, topLevelIds, skipped };
   }
 
   /**
@@ -495,9 +538,11 @@ export class MatrixClient {
    * current parent space(s) (or only from fromSpaceId, if given) and
    * optionally places it into toSpaceId. toSpaceId === null means
    * top-level (no parent space anymore). roomId/toSpaceId/fromSpaceId
-   * must already be resolved room IDs.
+   * must already be resolved room IDs. Parent spaces are searched among
+   * the local spaces only (see listScannableSpaces); spaces that had to be
+   * skipped are returned in "skipped".
    */
-  async moveNode(roomId, { toSpaceId = null, fromSpaceId = null } = {}) {
+  async moveNode(roomId, { toSpaceId = null, fromSpaceId = null, includeRemote = false } = {}) {
     if (toSpaceId) {
       if (toSpaceId === roomId) {
         throw new Error('A room/space cannot be moved into itself.');
@@ -510,7 +555,10 @@ export class MatrixClient {
       }
     }
 
-    const parents = fromSpaceId ? [{ room_id: fromSpaceId }] : await this.findParentSpaces(roomId);
+    const skipped = [];
+    const parents = fromSpaceId
+      ? [{ room_id: fromSpaceId }]
+      : await this.findParentSpaces(roomId, { includeRemote, onSkip: (info) => skipped.push(info) });
     const removedFrom = [];
 
     for (const parent of parents) {
@@ -534,7 +582,7 @@ export class MatrixClient {
       }
     }
 
-    return { removedFrom, addedTo: toSpaceId };
+    return { removedFrom, addedTo: toSpaceId, skipped };
   }
 
   /**

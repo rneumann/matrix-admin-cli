@@ -47,7 +47,11 @@ export async function spaceTreeCommand(options) {
   const client = new MatrixClient(config);
 
   try {
-    const hierarchy = await client.getSpaceHierarchy();
+    const hierarchy = await client.getSpaceHierarchy({ includeRemote: Boolean(options.includeRemote) });
+
+    for (const { roomId, reason } of hierarchy.skipped) {
+      console.warn(`Warning: space ${roomId} skipped (state not readable): ${reason}`);
+    }
     const lines = [];
 
     if (options.root) {

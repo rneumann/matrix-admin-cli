@@ -59,6 +59,13 @@ node bin/matrix-admin.js move 'SubRoom' --to 'TargetSpace'
 node bin/matrix-admin.js move 'SubRoom' --top-level
 node bin/matrix-admin.js move 'SubRoom' --from 'OldSpace' --to 'TargetSpace'
 
+# Federated (remote) spaces are not scanned for parent relations: Synapse often has no
+# complete state for them and answers /_synapse/admin/v1/rooms/<id>/state with HTTP 500
+# ("Missing state for ..."). --include-remote scans them anyway; unreadable spaces are
+# then skipped with a warning instead of aborting the command.
+node bin/matrix-admin.js move 'SubRoom' --to 'TargetSpace' --include-remote
+node bin/matrix-admin.js space tree --include-remote
+
 # Permanently delete a room/space from the server (purge, including all messages).
 # Best-effort removes the m.space.child references from all parent spaces first.
 node bin/matrix-admin.js delete 'SubRoom' --yes

@@ -132,6 +132,12 @@ export function buildCli() {
       'Hierarchical listing of all spaces/rooms on the server (nesting via m.space.child)'
     )
     .option('--root <spaceIdOrAlias>', 'Only show the subtree starting at this space (instead of all top-level nodes)')
+    .option(
+      '--include-remote',
+      'Also scan federated (remote) spaces - their state is often unavailable locally, which makes ' +
+        'the admin API answer with HTTP 500',
+      false
+    )
     .action(spaceTreeCommand);
 
   program
@@ -145,6 +151,12 @@ export function buildCli() {
     .option(
       '--from <spaceIdOrAlias>',
       'Only remove from this one parent space, instead of from all currently found'
+    )
+    .option(
+      '--include-remote',
+      'Also scan federated (remote) spaces for parent relations - may fail with HTTP 500 if the ' +
+        'local server has no complete state for them',
+      false
     )
     .action(moveCommand);
 

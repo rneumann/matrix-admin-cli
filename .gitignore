@@ -5,3 +5,4 @@ node_modules/
 *.log
 hierarchies.txt
 move.sh
+src/commands/spaceTree.js

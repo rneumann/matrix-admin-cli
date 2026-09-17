@@ -20,7 +20,15 @@ export async function moveCommand(roomIdOrAlias, options) {
     const toSpaceId = options.to ? await client.resolveRoomId(options.to) : null;
     const fromSpaceId = options.from ? await client.resolveRoomId(options.from) : null;
 
-    const { removedFrom, addedTo } = await client.moveNode(roomId, { toSpaceId, fromSpaceId });
+    const { removedFrom, addedTo, skipped } = await client.moveNode(roomId, {
+      toSpaceId,
+      fromSpaceId,
+      includeRemote: Boolean(options.includeRemote),
+    });
+
+    for (const { roomId: skippedId, reason } of skipped) {
+      console.warn(`Warning: space ${skippedId} skipped (state not readable): ${reason}`);
+    }
 
     for (const parentId of removedFrom) {
       console.log(`Removed from space ${parentId}.`);
